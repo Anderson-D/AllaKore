@@ -1191,7 +1191,7 @@ begin
           MyCompareBmp.Clear;
           PackStream.Clear;
           ReceivingBmp := false;
-          Sleep(380);
+
           if (frm_RemoteScreen.Resized) then
           begin
             frm_RemoteScreen.Resized := false;
