@@ -12838,7 +12838,6 @@ object frm_Main: Tfrm_Main
     OnConnecting = Main_SocketConnecting
     OnConnect = Main_SocketConnect
     OnDisconnect = Main_SocketDisconnect
-    OnRead = Main_SocketRead
     OnError = Main_SocketError
     Left = 56
     Top = 344

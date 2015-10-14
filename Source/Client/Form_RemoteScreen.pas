@@ -45,12 +45,14 @@ type
     procedure FileShared_ImageClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure Screen_ImageDblClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure Quality_ComboBoxChange(Sender: TObject);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     { Private declarations }
   public
-    Resized: Boolean;
-
+    Resized, QualityChanged: Boolean;
+    CtrlPressed, ShiftPressed, AltPressed: Boolean;
     { Public declarations }
   end;
 
@@ -98,9 +100,70 @@ procedure Tfrm_RemoteScreen.CaptureKeys_TimerTimer(Sender: TObject);
 var
   i: Byte;
 begin
-
   // The keys programmed here, may not match the keys on your keyboard. I recommend to undertake adaptation.
   try
+
+
+    { Combo }
+    if (Active) then
+    begin
+    // Alt
+      if not (AltPressed) then
+      begin
+        if (GetKeyState(VK_MENU) < 0) then
+        begin
+          AltPressed := true;
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|ALTDOWN|>');
+        end;
+      end
+      else
+      begin
+        if (GetKeyState(VK_MENU) > -1) then
+        begin
+          AltPressed := false;
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|ALTUP|>');
+        end;
+      end;
+
+
+    // Ctrl
+      if not (CtrlPressed) then
+      begin
+        if (GetKeyState(VK_CONTROL) < 0) then
+        begin
+          CtrlPressed := true;
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|CTRLDOWN|>');
+        end;
+      end
+      else
+      begin
+        if (GetKeyState(VK_CONTROL) > -1) then
+        begin
+          CtrlPressed := false;
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|CTRLUP|>');
+        end;
+      end;
+
+
+    // Shift
+      if not (ShiftPressed) then
+      begin
+        if (GetKeyState(VK_SHIFT) < 0) then
+        begin
+          ShiftPressed := true;
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SHIFTDOWN|>');
+        end;
+      end
+      else
+      begin
+        if (GetKeyState(VK_SHIFT) > -1) then
+        begin
+          ShiftPressed := false;
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SHIFTUP|>');
+        end;
+      end;
+    end;
+
     for i := 8 to 228 do
     begin
       if (GetAsyncKeyState(i) = -32767) then
@@ -294,6 +357,11 @@ begin
   frm_Chat.Show;
 end;
 
+procedure Tfrm_RemoteScreen.Quality_ComboBoxChange(Sender: TObject);
+begin
+  QualityChanged := true;
+end;
+
 procedure Tfrm_RemoteScreen.FileShared_ImageClick(Sender: TObject);
 begin
   frm_ShareFiles.show;
@@ -317,6 +385,13 @@ begin
   if (Resize_CheckBox.Checked) then
     Resized := true;
 
+end;
+
+procedure Tfrm_RemoteScreen.FormShow(Sender: TObject);
+begin
+  CtrlPressed := false;
+  ShiftPressed := false;
+  AltPressed := false;
 end;
 
 procedure Tfrm_RemoteScreen.KeyboardRemote_CheckBoxClick(Sender: TObject);

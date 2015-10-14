@@ -27,6 +27,13 @@ uses
   Registry, Vcl.Menus;
 
 type
+  TThread_Connection_Main = class(TThread)
+    Socket: TCustomWinSocket;
+    constructor Create(aSocket: TCustomWinSocket); overload;
+    procedure Execute; override;
+  end;
+
+type
   TThread_Connection_Desktop = class(TThread)
     Socket: TCustomWinSocket;
     constructor Create(aSocket: TCustomWinSocket); overload;
@@ -79,7 +86,6 @@ type
     procedure Main_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
     procedure Main_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
     procedure Desktop_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
-    procedure Main_SocketRead(Sender: TObject; Socket: TCustomWinSocket);
     procedure Desktop_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
     procedure Keyboard_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
     procedure Keyboard_SocketRead(Sender: TObject; Socket: TCustomWinSocket);
@@ -113,7 +119,7 @@ var
   Accessed: Boolean;
 
 const
-  Host = 'localhost';     // Host of Sockets
+  Host = 'localhost';     // Host of Sockets  (Insert the IP Address or DNS of your Server)
   Port = 3898;            // Port of Sockets
   ConnectionTimeout = 60; // Timeout of connection (in secound)
 
@@ -123,6 +129,13 @@ implementation
 
 uses
   Form_Password, Form_RemoteScreen, Form_Chat, Form_ShareFiles;
+
+constructor TThread_Connection_Main.Create(aSocket: TCustomWinSocket);
+begin
+  inherited Create(true);
+  Socket := aSocket;
+  FreeOnTerminate := true;
+end;
 
 constructor TThread_Connection_Desktop.Create(aSocket: TCustomWinSocket);
 begin
@@ -465,6 +478,7 @@ begin
   Socket.SendText('<|DESKTOPSOCKET|>' + MyID + '<<|');
   Thread_Connection_Desktop := TThread_Connection_Desktop.Create(Socket);
   Thread_Connection_Desktop.Resume;
+
 end;
 
 procedure Tfrm_Main.Desktop_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
@@ -538,6 +552,8 @@ begin
 end;
 
 procedure Tfrm_Main.Main_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
+var
+  Thread_Connection_Main: TThread_Connection_Main;
 begin
   Status_Image.Picture.Assign(Image3.Picture);
   Status_Label.Caption := 'You are connected!';
@@ -547,6 +563,9 @@ begin
   Timeout_Timer.Enabled := true;
 
   Socket.SendText('<|MAINSOCKET|>');
+
+  Thread_Connection_Main := TThread_Connection_Main.Create(Socket);
+  Thread_Connection_Main.Resume;
 
 end;
 
@@ -558,7 +577,7 @@ end;
 
 procedure Tfrm_Main.Main_SocketDisconnect(Sender: TObject; Socket: TCustomWinSocket);
 begin
-  if(frm_RemoteScreen.Visible) then
+  if (frm_RemoteScreen.Visible) then
     frm_RemoteScreen.Close;
   SetOffline;
   Status_Image.Picture.Assign(Image2.Picture);
@@ -569,435 +588,12 @@ end;
 procedure Tfrm_Main.Main_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
 begin
   ErrorCode := 0;
-  if(frm_RemoteScreen.Visible) then
+  if (frm_RemoteScreen.Visible) then
     frm_RemoteScreen.Close;
   SetOffline;
   Status_Image.Picture.Assign(Image2.Picture);
   Status_Label.Caption := 'Failed connect to Server.';
   CloseSockets;
-end;
-
-procedure Tfrm_Main.Main_SocketRead(Sender: TObject; Socket: TCustomWinSocket);
-var
-  s, s2: string;
-  MousePosX, MousePosY: Integer;
-  i: Integer;
-  FoldersAndFiles: TStringList;
-  L: TListItem;
-  FileToUpload: TMemoryStream;
-  Extension: string;
-begin
-  s := Socket.ReceiveText;
-
-  // Received data, then resets the timeout
-  Timeout := 0;
-
-  // If receive ID, are Online
-  if (Pos('<|ID|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|ID|>', s2) + 5);
-
-    MyID := Copy(s2, 1, Pos('<|>', s2) - 1);
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MyPassword := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-    SetOnline;
-
-    // If this Socket are connected, then connect the Desktop Socket, Keyboard Socket, File Download Socket and File Upload Socket
-    Desktop_Socket.Active := true;
-    Keyboard_Socket.Active := true;
-    Files_Socket.Active := true;
-
-    TargetID_Edit.SetFocus;
-  end;
-
-
-  // Ping
-  if (Pos('<|PING|>', s) > 0) then
-  begin
-    Socket.SendText('<|PONG|>');
-  end;
-
-  // Warns access and remove Wallpaper
-  if (Pos('<|ACCESSING|>', s) > 0) then
-  begin
-    OldWallpaper := GetWallpaperDirectory;
-    ChangeWallpaper('');
-
-    TargetID_Edit.Enabled := false;
-    Connect_BitBtn.Enabled := false;
-    Status_Image.Picture.Assign(Image3.Picture);
-    Status_Label.Caption := 'Connected support!';
-
-    Accessed := true;
-  end;
-
-  if (Pos('<|IDEXISTS!REQUESTPASSWORD|>', s) > 0) then
-  begin
-    Status_Label.Caption := 'Waiting for authentication...';
-    frm_Password.ShowModal;
-  end;
-
-  if (Pos('<|IDNOTEXISTS|>', s) > 0) then
-  begin
-    Status_Image.Picture.Assign(Image2.Picture);
-    Status_Label.Caption := 'ID does nor exists.';
-    TargetID_Edit.Enabled := true;
-    Connect_BitBtn.Enabled := true;
-    TargetID_Edit.SetFocus;
-  end;
-
-  if (Pos('<|ACCESSDENIED|>', s) > 0) then
-  begin
-    Status_Image.Picture.Assign(Image2.Picture);
-    Status_Label.Caption := 'Wrong password!';
-    TargetID_Edit.Enabled := true;
-    Connect_BitBtn.Enabled := true;
-    TargetID_Edit.SetFocus;
-  end;
-
-  if (Pos('<|ACCESSBUSY|>', s) > 0) then
-  begin
-    Status_Image.Picture.Assign(Image2.Picture);
-    Status_Label.Caption := 'PC is Busy!';
-    TargetID_Edit.Enabled := true;
-    Connect_BitBtn.Enabled := true;
-    TargetID_Edit.SetFocus;
-  end;
-
-  if (Pos('<|ACCESSGRANTED|>', s) > 0) then
-  begin
-    Status_Image.Picture.Assign(Image3.Picture);
-    Status_Label.Caption := 'Access granted!';
-    Viewer := true;
-
-    ClearConnection;
-    frm_RemoteScreen.Show;
-    Socket.SendText('<|RELATION|>' + MyID + '<|>' + TargetID_Edit.Text + '<<|');
-
-  end;
-
-  if (Pos('<|DISCONNECTED|>', s) > 0) then
-  begin
-    frm_RemoteScreen.Close;
-
-    frm_Main.SetOffline;
-    frm_Main.CloseSockets;
-    frm_Main.Reconnect;
-
-    Application.MessageBox('Lost connection to PC!', 'AllaKore Remote', 16);
-  end;
-
-
-
-
-
-
-
-  { Redirected commands }
-
-  // Desktop Remote (Mouse and Keyboard)
-  if (Pos('<|RESOLUTION|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|RESOLUTION|>', s2) + 13);
-
-    frm_Main.ResolutionTargetWidth := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    frm_Main.ResolutionTargetHeight := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-  end;
-
-  if (Pos('<|SETMOUSEPOS|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|SETMOUSEPOS|>', s2) + 14);
-
-    MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-
-    SetCursorPos(MousePosX, MousePosY);
-  end;
-
-  if (Pos('<|SETMOUSELEFTCLICKDOWN|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKDOWN|>', s2) + 24);
-
-    MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-
-    SetCursorPos(MousePosX, MousePosY);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-  end;
-
-  if (Pos('<|SETMOUSELEFTCLICKUP|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKUP|>', s2) + 22);
-
-    MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-
-    SetCursorPos(MousePosX, MousePosY);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-  end;
-
-  if (Pos('<|SETMOUSERIGHTCLICKDOWN|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKDOWN|>', s2) + 25);
-
-    MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-
-    SetCursorPos(MousePosX, MousePosY);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
-  end;
-
-  if (Pos('<|SETMOUSERIGHTCLICKUP|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKUP|>', s2) + 23);
-
-    MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-
-    SetCursorPos(MousePosX, MousePosY);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
-  end;
-
-  if (Pos('<|SETMOUSMIDDLEDOWN|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|SETMOUSEMIDDLEDOWN|>', s2) + 21);
-
-    MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-
-    SetCursorPos(MousePosX, MousePosY);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
-  end;
-
-  if (Pos('<|SETMOUSEMIDDLEUP|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|SETMOUSEMIDDLEUP|>', s2) + 19);
-
-    MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-    Delete(s2, 1, Pos('<|>', s2) + 2);
-
-    MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-
-    SetCursorPos(MousePosX, MousePosY);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
-  end;
-
-  if(Pos('<|SETMOUSEDOUBLECLICK|>', s)>0) then begin
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-    Sleep(10);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-    Sleep(10);
-     Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-    Sleep(10);
-    Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-  end;
-
-
-
-  // Chat
-  if (Pos('<|CHAT|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|CHAT|>', s2) + 7);
-
-    s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-    with frm_Chat do
-    begin
-      if (FirstMessage) then
-      begin
-        LastMessageAreYou := false;
-        Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
-        Chat_RichEdit.SelAttributes.Style := [fsBold];
-        Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
-        FirstMessage := false;
-      end;
-      if (LastMessageAreYou) then
-      begin
-        LastMessageAreYou := false;
-        Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
-        Chat_RichEdit.SelAttributes.Style := [fsBold];
-        Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
-        Chat_RichEdit.Lines.Add('   •   ' + s2);
-      end
-      else
-      begin
-        Chat_RichEdit.Lines.Add('   •   ' + s2);
-      end;
-
-      SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
-
-      if not (Visible) then
-      begin
-        PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
-        Show;
-      end;
-
-      if not (Active) then
-        PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
-    end;
-  end;
-
-
-  // Share Files
-  // Request Folder List
-  if (Pos('<|GETFOLDERS|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|GETFOLDERS|>', s2) + 13);
-
-    s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-    Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(s2) + '<<|');
-  end;
-
-  //Request Files List
-  if (Pos('<|GETFILES|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|GETFILES|>', s2) + 11);
-
-    s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-    Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(s2, '*.*') + '<<|');
-  end;
-
-  // Receive Folder List
-  if (Pos('<|FOLDERLIST|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|FOLDERLIST|>', s2) + 13);
-
-    FoldersAndFiles := TStringList.Create;
-    FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
-    FoldersAndFiles.Sort;
-
-    frm_ShareFiles.ShareFiles_ListView.Clear;
-    for i := 0 to FoldersAndFiles.Count - 1 do
-    begin
-      L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
-      if (FoldersAndFiles.Strings[i] = '..') then
-      begin
-        L.Caption := 'Return';
-        L.ImageIndex := 0;
-      end
-      else
-      begin
-        L.Caption := FoldersAndFiles.Strings[i];
-        L.ImageIndex := 1;
-      end;
-    end;
-    FreeAndNil(FoldersAndFiles);
-
-    Socket.SendText('<|REDIRECT|><|GETFILES|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
-  end;
-
-  // Receive Files List
-  if (Pos('<|FILESLIST|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|FILESLIST|>', s2) + 12);
-
-    FoldersAndFiles := TStringList.Create;
-    FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
-    FoldersAndFiles.Sort;
-
-    for i := 0 to FoldersAndFiles.Count - 1 do
-    begin
-      L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
-      L.Caption := FoldersAndFiles.Strings[i];
-      Extension := LowerCase(ExtractFileExt(L.Caption));
-      if (Extension = '.exe') then
-        L.ImageIndex := 3
-      else if (Extension = '.txt') then
-        L.ImageIndex := 4
-      else if (Extension = '.rar') then
-        L.ImageIndex := 5
-      else if (Extension = '.mp3') then
-        L.ImageIndex := 6
-      else if (Extension = '.zip') then
-        L.ImageIndex := 7
-      else if (Extension = '.jpg') then
-        L.ImageIndex := 8
-      else if (Extension = '.bat') then
-        L.ImageIndex := 9
-      else
-        L.ImageIndex := 2;
-    end;
-    FreeAndNil(FoldersAndFiles);
-
-    frm_ShareFiles.ShareFiles_ListView.Enabled := true;
-    frm_ShareFiles.Directory_Edit.Enabled := true;
-
-  end;
-
-  if (Pos('<|UPLOADPROGRESS|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|UPLOADPROGRESS|>', s2) + 17);
-
-    s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-    frm_ShareFiles.Upload_ProgressBar.Position := StrToInt(s2);
-    frm_ShareFiles.SizeUpload_Label.Caption := 'Size: ' + getSize(frm_ShareFiles.Upload_ProgressBar.Position) + ' / ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Max);
-  end;
-
-  if (Pos('<|UPLOADCOMPLETE|>', s) > 0) then
-  begin
-    with frm_ShareFiles do
-    begin
-      Upload_ProgressBar.Position := 0;
-      Upload_BitBtn.Enabled := True;
-      ShareFiles_ListView.Enabled := false;
-      Directory_Edit.Enabled := false;
-      frm_ShareFiles.SizeUpload_Label.Caption := 'Size: 0 B / 0 B';
-    end;
-
-    Main_Socket.Socket.SendText('<|REDIRECT|><|GETFOLDERS|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
-
-    Application.MessageBox('File sent!', 'AllaKore Remote - Share Files', 64);
-  end;
-
-  if (Pos('<|DOWNLOADFILE|>', s) > 0) then
-  begin
-    s2 := s;
-    Delete(s2, 1, Pos('<|DOWNLOADFILE|>', s2) + 15);
-
-    s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-    FileToUpload := TMemoryStream.Create;
-    FileToUpload.LoadFromFile(s2);
-
-    Files_Socket.Socket.SendText('<|SIZE|>' + intToStr(FileToUpload.Size) + '<<|' + MemoryStreamToString(FileToUpload));
-
-    FreeAndNil(FileToUpload);
-  end;
-
 end;
 
 procedure Tfrm_Main.Reconnect_TimerTimer(Sender: TObject);
@@ -1030,6 +626,559 @@ begin
   end;
   Inc(Timeout);
 end;
+
+
+
+
+
+
+// Connection are Main
+procedure TThread_Connection_Main.Execute;
+var
+  s, s2: string;
+  MousePosX, MousePosY: Integer;
+  i: Integer;
+  FoldersAndFiles: TStringList;
+  L: TListItem;
+  FileToUpload: TMemoryStream;
+  Extension: string;
+begin
+  inherited;
+
+  while Socket.Connected do
+  begin
+
+    if (Socket.ReceiveLength > 0) then
+    begin
+      s := Socket.ReceiveText;
+
+  // Received data, then resets the timeout
+      Timeout := 0;
+
+  // If receive ID, are Online
+      if (Pos('<|ID|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|ID|>', s2) + 5);
+
+        frm_Main.MyID := Copy(s2, 1, Pos('<|>', s2) - 1);
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        frm_Main.MyPassword := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+        Synchronize(frm_Main.SetOnline);
+
+    // If this Socket are connected, then connect the Desktop Socket, Keyboard Socket, File Download Socket and File Upload Socket
+        Synchronize(
+          procedure
+          begin
+            with frm_Main do
+            begin
+              Desktop_Socket.Active := true;
+              Keyboard_Socket.Active := true;
+              Files_Socket.Active := true;
+
+              TargetID_Edit.SetFocus;
+            end;
+          end);
+      end;
+
+
+  // Ping
+      if (Pos('<|PING|>', s) > 0) then
+      begin
+        Socket.SendText('<|PONG|>');
+      end;
+
+  // Warns access and remove Wallpaper
+      if (Pos('<|ACCESSING|>', s) > 0) then
+      begin
+        OldWallpaper := GetWallpaperDirectory;
+        ChangeWallpaper('');
+
+        Synchronize(
+          procedure
+          begin
+            with frm_Main do
+            begin
+              TargetID_Edit.Enabled := false;
+              Connect_BitBtn.Enabled := false;
+              Status_Image.Picture.Assign(frm_Main.Image3.Picture);
+              Status_Label.Caption := 'Connected support!';
+            end;
+          end);
+        Accessed := true;
+      end;
+
+      if (Pos('<|IDEXISTS!REQUESTPASSWORD|>', s) > 0) then
+      begin
+        Synchronize(
+          procedure
+          begin
+            with frm_Main do
+            begin
+              frm_Main.Status_Label.Caption := 'Waiting for authentication...';
+              frm_Password.ShowModal;
+            end;
+          end);
+      end;
+
+      if (Pos('<|IDNOTEXISTS|>', s) > 0) then
+      begin
+        Synchronize(
+          procedure
+          begin
+            with frm_Main do
+            begin
+              Status_Image.Picture.Assign(frm_Main.Image2.Picture);
+              Status_Label.Caption := 'ID does nor exists.';
+              TargetID_Edit.Enabled := true;
+              Connect_BitBtn.Enabled := true;
+              TargetID_Edit.SetFocus;
+            end;
+          end);
+      end;
+
+      if (Pos('<|ACCESSDENIED|>', s) > 0) then
+      begin
+        Synchronize(
+          procedure
+          begin
+
+            with frm_Main do
+            begin
+              Status_Image.Picture.Assign(Image2.Picture);
+              Status_Label.Caption := 'Wrong password!';
+              TargetID_Edit.Enabled := true;
+              Connect_BitBtn.Enabled := true;
+              TargetID_Edit.SetFocus;
+            end;
+          end);
+      end;
+
+      if (Pos('<|ACCESSBUSY|>', s) > 0) then
+      begin
+        Synchronize(
+          procedure
+          begin
+
+            with frm_Main do
+            begin
+              Status_Image.Picture.Assign(Image2.Picture);
+              Status_Label.Caption := 'PC is Busy!';
+              TargetID_Edit.Enabled := true;
+              Connect_BitBtn.Enabled := true;
+              TargetID_Edit.SetFocus;
+            end;
+          end);
+      end;
+
+      if (Pos('<|ACCESSGRANTED|>', s) > 0) then
+      begin
+        Synchronize(
+          procedure
+          begin
+            with frm_Main do
+            begin
+              Status_Image.Picture.Assign(Image3.Picture);
+              Status_Label.Caption := 'Access granted!';
+              Viewer := true;
+
+              ClearConnection;
+              frm_RemoteScreen.Show;
+              Socket.SendText('<|RELATION|>' + MyID + '<|>' + TargetID_Edit.Text + '<<|');
+            end;
+          end);
+      end;
+
+      if (Pos('<|DISCONNECTED|>', s) > 0) then
+      begin
+        Synchronize(
+          procedure
+          begin
+            with frm_Main do
+            begin
+              frm_RemoteScreen.Close;
+
+              SetOffline;
+              CloseSockets;
+              Reconnect;
+
+              Application.MessageBox('Lost connection to PC!', 'AllaKore Remote', 16);
+            end;
+          end);
+      end;
+
+
+
+
+
+
+
+  { Redirected commands }
+
+  // Desktop Remote (Mouse and Keyboard)
+      if (Pos('<|RESOLUTION|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|RESOLUTION|>', s2) + 13);
+
+        frm_Main.ResolutionTargetWidth := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        frm_Main.ResolutionTargetHeight := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+      end;
+
+      if (Pos('<|SETMOUSEPOS|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|SETMOUSEPOS|>', s2) + 14);
+
+        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+
+        SetCursorPos(MousePosX, MousePosY);
+      end;
+
+      if (Pos('<|SETMOUSELEFTCLICKDOWN|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKDOWN|>', s2) + 24);
+
+        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+
+        SetCursorPos(MousePosX, MousePosY);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+      end;
+
+      if (Pos('<|SETMOUSELEFTCLICKUP|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKUP|>', s2) + 22);
+
+        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+
+        SetCursorPos(MousePosX, MousePosY);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+      end;
+
+      if (Pos('<|SETMOUSERIGHTCLICKDOWN|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKDOWN|>', s2) + 25);
+
+        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+
+        SetCursorPos(MousePosX, MousePosY);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+      end;
+
+      if (Pos('<|SETMOUSERIGHTCLICKUP|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKUP|>', s2) + 23);
+
+        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+
+        SetCursorPos(MousePosX, MousePosY);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+      end;
+
+      if (Pos('<|SETMOUSMIDDLEDOWN|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|SETMOUSEMIDDLEDOWN|>', s2) + 21);
+
+        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+
+        SetCursorPos(MousePosX, MousePosY);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
+      end;
+
+      if (Pos('<|SETMOUSEMIDDLEUP|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|SETMOUSEMIDDLEUP|>', s2) + 19);
+
+        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+        Delete(s2, 1, Pos('<|>', s2) + 2);
+
+        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+
+        SetCursorPos(MousePosX, MousePosY);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
+      end;
+
+      if (Pos('<|SETMOUSEDOUBLECLICK|>', s) > 0) then
+      begin
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+        Sleep(10);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+        Sleep(10);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+        Sleep(10);
+        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+      end;
+
+
+  // Combo Keys
+      if (Pos('<|ALTDOWN|>', s) > 0) then
+        keybd_event(18, 0, 0, 0);
+
+      if (Pos('<|ALTUP|>', s) > 0) then
+        keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
+
+      if (Pos('<|CTRLDOWN|>', s) > 0) then
+        keybd_event(17, 0, 0, 0);
+
+      if (Pos('<|CTRLUP|>', s) > 0) then
+        keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
+
+      if (Pos('<|SHIFTDOWN|>', s) > 0) then
+        keybd_event(16, 0, 0, 0);
+
+      if (Pos('<|SHIFTUP|>', s) > 0) then
+        keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
+
+
+
+
+
+  // Chat
+      if (Pos('<|CHAT|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|CHAT|>', s2) + 7);
+
+        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+        Synchronize(
+          procedure
+          begin
+            with frm_Chat do
+            begin
+              if (FirstMessage) then
+              begin
+                LastMessageAreYou := false;
+                Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+                Chat_RichEdit.SelAttributes.Style := [fsBold];
+                Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
+                FirstMessage := false;
+              end;
+              if (LastMessageAreYou) then
+              begin
+                LastMessageAreYou := false;
+                Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+                Chat_RichEdit.SelAttributes.Style := [fsBold];
+                Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
+                Chat_RichEdit.Lines.Add('   •   ' + s2);
+              end
+              else
+              begin
+                Chat_RichEdit.Lines.Add('   •   ' + s2);
+              end;
+
+              SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+
+              if not (Visible) then
+              begin
+                PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
+                Show;
+              end;
+
+              if not (Active) then
+                PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
+            end;
+          end);
+      end;
+
+
+  // Share Files
+  // Request Folder List
+      if (Pos('<|GETFOLDERS|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|GETFOLDERS|>', s2) + 13);
+
+        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+        Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(s2) + '<<|');
+      end;
+
+  //Request Files List
+      if (Pos('<|GETFILES|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|GETFILES|>', s2) + 11);
+
+        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+        Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(s2, '*.*') + '<<|');
+      end;
+
+  // Receive Folder List
+      if (Pos('<|FOLDERLIST|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|FOLDERLIST|>', s2) + 13);
+
+        FoldersAndFiles := TStringList.Create;
+        FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
+        FoldersAndFiles.Sort;
+
+        Synchronize(
+          procedure
+          begin
+            frm_ShareFiles.ShareFiles_ListView.Clear;
+          end);
+        for i := 0 to FoldersAndFiles.Count - 1 do
+        begin
+          Synchronize(
+            procedure
+            begin
+              L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
+              if (FoldersAndFiles.Strings[i] = '..') then
+              begin
+                L.Caption := 'Return';
+                L.ImageIndex := 0;
+              end
+              else
+              begin
+                L.Caption := FoldersAndFiles.Strings[i];
+                L.ImageIndex := 1;
+              end;
+            end);
+        end;
+        FreeAndNil(FoldersAndFiles);
+
+        Socket.SendText('<|REDIRECT|><|GETFILES|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
+      end;
+
+  // Receive Files List
+      if (Pos('<|FILESLIST|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|FILESLIST|>', s2) + 12);
+
+        FoldersAndFiles := TStringList.Create;
+        FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
+        FoldersAndFiles.Sort;
+
+        for i := 0 to FoldersAndFiles.Count - 1 do
+        begin
+          Synchronize(
+            procedure
+            begin
+              L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
+              L.Caption := FoldersAndFiles.Strings[i];
+              Extension := LowerCase(ExtractFileExt(L.Caption));
+              if (Extension = '.exe') then
+                L.ImageIndex := 3
+              else if (Extension = '.txt') then
+                L.ImageIndex := 4
+              else if (Extension = '.rar') then
+                L.ImageIndex := 5
+              else if (Extension = '.mp3') then
+                L.ImageIndex := 6
+              else if (Extension = '.zip') then
+                L.ImageIndex := 7
+              else if (Extension = '.jpg') then
+                L.ImageIndex := 8
+              else if (Extension = '.bat') then
+                L.ImageIndex := 9
+              else
+                L.ImageIndex := 2;
+            end);
+        end;
+        FreeAndNil(FoldersAndFiles);
+
+        Synchronize(
+          procedure
+          begin
+            frm_ShareFiles.ShareFiles_ListView.Enabled := true;
+            frm_ShareFiles.Directory_Edit.Enabled := true;
+          end);
+
+      end;
+
+      if (Pos('<|UPLOADPROGRESS|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|UPLOADPROGRESS|>', s2) + 17);
+
+        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+        Synchronize(
+          procedure
+          begin
+            frm_ShareFiles.Upload_ProgressBar.Position := StrToInt(s2);
+            frm_ShareFiles.SizeUpload_Label.Caption := 'Size: ' + getSize(frm_ShareFiles.Upload_ProgressBar.Position) + ' / ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Max);
+          end);
+      end;
+
+      if (Pos('<|UPLOADCOMPLETE|>', s) > 0) then
+      begin
+        Synchronize(
+          procedure
+          begin
+            with frm_ShareFiles do
+            begin
+              Upload_ProgressBar.Position := 0;
+              Upload_BitBtn.Enabled := True;
+              ShareFiles_ListView.Enabled := false;
+              Directory_Edit.Enabled := false;
+              frm_ShareFiles.SizeUpload_Label.Caption := 'Size: 0 B / 0 B';
+            end;
+          end);
+
+        frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|GETFOLDERS|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
+
+        Synchronize(
+          procedure
+          begin
+            Application.MessageBox('File sent!', 'AllaKore Remote - Share Files', 64);
+          end);
+      end;
+
+      if (Pos('<|DOWNLOADFILE|>', s) > 0) then
+      begin
+        s2 := s;
+        Delete(s2, 1, Pos('<|DOWNLOADFILE|>', s2) + 15);
+
+        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+        FileToUpload := TMemoryStream.Create;
+        FileToUpload.LoadFromFile(s2);
+
+        frm_Main.Files_Socket.Socket.SendText('<|SIZE|>' + intToStr(FileToUpload.Size) + '<<|' + MemoryStreamToString(FileToUpload));
+
+        FreeAndNil(FileToUpload);
+      end;
+
+    end;
+    Sleep(5); // Avoids using 100% CPU
+  end;
+end;
+
+
+
+
 
 
 // Connection of Desktop screens
@@ -1137,7 +1286,7 @@ begin
           Synchronize(
             procedure
             begin
-              frm_RemoteScreen.Caption := 'AllaKore Remote - '+GetSize(ReceiveBmpSize);
+              frm_RemoteScreen.Caption := 'AllaKore Remote - ' + GetSize(ReceiveBmpSize);
             end);
         end;
       end;
@@ -1194,12 +1343,15 @@ begin
 
           if (frm_RemoteScreen.Resized) then
           begin
+
             frm_RemoteScreen.Resized := false;
             MyFirstBmp.Clear;
+
             if (frm_RemoteScreen.Resize_CheckBox.Checked) then
               Socket.SendText('<|GETFULLSCREENSHOT|><|NEWRESOLUTION|>' + intToStr(frm_RemoteScreen.Screen_Image.Width) + '<|>' + intToStr(frm_RemoteScreen.Screen_Image.Height) + '<<|')
             else
               Socket.SendText('<|GETFULLSCREENSHOT|>');
+
           end
           else
             Socket.SendText('<|GETPARTSCREENSHOT|>');
@@ -1259,7 +1411,7 @@ begin
                 frm_ShareFiles.Download_ProgressBar.Max := FileSize;
                 frm_ShareFiles.Download_ProgressBar.Position := 0;
                 frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + getSize(FileStream.Size) + ' / ' + GetSize(FileSize);
-                  end);
+              end);
 
           Delete(s, 1, Pos('<<|', s) + 2);
           ReceivingFile := true;
