@@ -3,7 +3,7 @@
 
 	My Github: https://www.github.com/Senjaxus
 
-	AllaKore Remote is an open source software written in Delphi XE6 and Delphi 7.
+	AllaKore Remote is a Remote Access software open source written in Delphi XE6 and Delphi 7.
 
 
 -----------------------------------------------------------------------
