@@ -529,7 +529,6 @@ begin
   Files_Socket.Host := Host;
   Files_Socket.Port := Port;
   //
-
   ResolutionTargetWidth := 986;
   ResolutionTargetHeight := 600;
 
@@ -641,11 +640,6 @@ begin
   end;
   Inc(Timeout);
 end;
-
-
-
-
-
 
 procedure Tfrm_Main.Timer1Timer(Sender: TObject);
 begin
@@ -1281,7 +1275,6 @@ begin
         SendBMPSize := PackStream.Size;
 
         Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
-      //  Socket.SendText('<|E|>');
       end;
 
       if (Pos('<|GETPARTSCREENSHOT|>', s) > 0) then
@@ -1300,26 +1293,6 @@ begin
         PackStream.Position := 0;
         SendBMPSize := PackStream.Size;
         Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
-       // Socket.SendText('<|E|>');
-
-        // Get Cursor
-       // with frm_Main do begin
-       Synchronize(
-       procedure
-       begin
-          if(GetCursor = Screen.Cursors[crDefault]) then
-            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|crDefault|>');
-
-          if(GetCursor = Screen.Cursors[crHandPoint]) then
-            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|crHandPoint|>');
-
-          if(GetCursor = Screen.Cursors[crIBeam]) then
-            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|crIBeam|>');
-          end);
-
-     //  end;
-
-
       end;
 
       if not (ReceivingBmp) then
@@ -1443,7 +1416,7 @@ begin
           s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
 
           FileSize := StrToInt(s2);
-          FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile+'.tmp', fmCreate or fmOpenReadWrite);
+          FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
 
           if (frm_Main.Viewer) then
             Synchronize(
@@ -1476,10 +1449,10 @@ begin
         begin
           FreeAndNil(FileStream);
 
-          if(FileExists(frm_ShareFiles.DirectoryToSaveFile)) then
+          if (FileExists(frm_ShareFiles.DirectoryToSaveFile)) then
             DeleteFile(frm_ShareFiles.DirectoryToSaveFile);
 
-          RenameFile(frm_ShareFiles.DirectoryToSaveFile+'.tmp', frm_ShareFiles.DirectoryToSaveFile);
+          RenameFile(frm_ShareFiles.DirectoryToSaveFile + '.tmp', frm_ShareFiles.DirectoryToSaveFile);
 
           if not (frm_Main.Viewer) then
             frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADCOMPLETE|>')

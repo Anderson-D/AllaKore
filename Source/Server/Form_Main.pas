@@ -481,6 +481,8 @@ begin
     except
 
     end;
+    
+    Sleep(5);
   end;
 
 end;
@@ -536,6 +538,8 @@ begin
     except
 
     end;
+
+    Sleep(5);
   end;
 
 end;
@@ -562,6 +566,8 @@ begin
       AThread_Keyboard_Target.Connection.Write(s);
     except
     end;
+
+    Sleep(5);
   end;
 
 end;
@@ -589,6 +595,8 @@ begin
       AThread_Files_Target.Connection.Write(s);
     except
     end;
+
+    Sleep(5);
   end;
 
 end;
