@@ -377,7 +377,7 @@ begin
 
   AThread_Main.Connection.Write('<|ID|>' + ID + '<|>' + Password + '<<|');
 
-  while AThread_Main.Connection.Connected do
+  while true do
   begin
     try
       s := AThread_Main.Connection.CurrentReadBuffer;
@@ -387,6 +387,7 @@ begin
         L := FindListItemID(ID);
         L.Delete;
         AThread_Main_Target.Connection.Write('<|DISCONNECTED|>');
+        Break;
       end;
 
       if (Pos('<|FINDID|>', s) > 0) then
@@ -523,10 +524,13 @@ begin
   AThread_Main_OnDesktop := (L.SubItems.Objects[0] as TThreadConnection_Main).AThread_Main;
   L.SubItems.Objects[1] := TObject(Self);
 
-  while AThread_Desktop.Connection.Connected do
+  while true do
   begin
     try
       s := AThread_Desktop.Connection.CurrentReadBuffer;
+
+      if(Length(s)<1) then
+        break;
 
       AThread_Desktop_Target.Connection.Write(s);
     except
@@ -547,10 +551,13 @@ begin
   L := FindListItemID(MyID);
   L.SubItems.Objects[2] := TObject(Self);
 
-  while AThread_Keyboard.Connection.Connected do
+  while true do
   begin
     try
       s := AThread_Keyboard.Connection.CurrentReadBuffer;
+
+      if(Length(s)<1) then
+        Break;
 
       AThread_Keyboard_Target.Connection.Write(s);
     except
@@ -571,11 +578,13 @@ begin
   L := FindListItemID(MyID);
   L.SubItems.Objects[3] := TObject(Self);
 
-  while AThread_Files.Connection.Connected do
+  while true do
   begin
     try
-
       s := AThread_Files.Connection.CurrentReadBuffer;
+
+      if(Length(s)<1) then
+        Break;
 
       AThread_Files_Target.Connection.Write(s);
     except

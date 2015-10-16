@@ -96,6 +96,7 @@ type
     procedure Timeout_TimerTimer(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure About_BitBtnClick(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
   private
     { Private declarations }
   public
@@ -116,7 +117,7 @@ var
   ResolutionWidth, ResolutionHeight: Integer;
   Timeout: Integer;
   OldWallpaper: string;
-  Accessed: Boolean;
+  Accessed, LostConnection: Boolean;
 
 const
   Host = 'localhost';     // Host of Sockets  (Insert the IP Address or DNS of your Server)
@@ -221,6 +222,9 @@ begin
   begin
     Width := 230;
     Height := 340;
+
+    Left := Screen.WorkAreaWidth - Width;
+    Top := Screen.WorkAreaHeight - Height;
 
     Chat_RichEdit.Clear;
     YourText_Edit.Clear;
@@ -525,6 +529,7 @@ begin
   Files_Socket.Host := Host;
   Files_Socket.Port := Port;
   //
+
   ResolutionTargetWidth := 986;
   ResolutionTargetHeight := 600;
 
@@ -555,8 +560,18 @@ procedure Tfrm_Main.Main_SocketConnect(Sender: TObject; Socket: TCustomWinSocket
 var
   Thread_Connection_Main: TThread_Connection_Main;
 begin
-  Status_Image.Picture.Assign(Image3.Picture);
-  Status_Label.Caption := 'You are connected!';
+  if (LostConnection) then
+  begin
+    Status_Image.Picture.Assign(Image2.Picture);
+    Status_Label.Caption := 'Lost connection to PC!';
+    FlashWindow(Handle, true);
+    LostConnection := false;
+  end
+  else
+  begin
+    Status_Image.Picture.Assign(Image3.Picture);
+    Status_Label.Caption := 'You are connected!';
+  end;
 
   Timeout := 0;
 
@@ -631,6 +646,11 @@ end;
 
 
 
+
+procedure Tfrm_Main.Timer1Timer(Sender: TObject);
+begin
+
+end;
 
 // Connection are Main
 procedure TThread_Connection_Main.Execute;
@@ -800,12 +820,15 @@ begin
             begin
               frm_RemoteScreen.Close;
 
+              LostConnection := true;
+
               SetOffline;
               CloseSockets;
               Reconnect;
 
-              Application.MessageBox('Lost connection to PC!', 'AllaKore Remote', 16);
-            end;
+             // Application.MessageBox('Lost connection to PC!', 'AllaKore Remote', 16);
+
+                end;
           end);
       end;
 
@@ -978,6 +1001,7 @@ begin
                 LastMessageAreYou := false;
                 Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                 Chat_RichEdit.SelAttributes.Style := [fsBold];
+                Chat_RichEdit.SelAttributes.Color := clGreen;
                 Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
                 FirstMessage := false;
               end;
@@ -986,6 +1010,7 @@ begin
                 LastMessageAreYou := false;
                 Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                 Chat_RichEdit.SelAttributes.Style := [fsBold];
+                Chat_RichEdit.SelAttributes.Color := clGreen;
                 Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
                 Chat_RichEdit.Lines.Add('   •   ' + s2);
               end
@@ -1003,7 +1028,11 @@ begin
               end;
 
               if not (Active) then
+              begin
                 PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
+                FlashWindow(frm_Main.Handle, true);
+                FlashWindow(frm_Chat.Handle, true);
+              end;
             end;
           end);
       end;
@@ -1240,17 +1269,19 @@ begin
         Synchronize(
           procedure
           begin
-            GetScreenToBmp(true, MyFirstBmp, ResolutionWidth, ResolutionHeight);
+            GetScreenToBmp(false, MyFirstBmp, ResolutionWidth, ResolutionHeight);
           end);
 
         MyFirstBmp.Position := 0;
         PackStream.LoadFromStream(MyFirstBmp);
 
         CompressStream(PackStream);
+        CompressStream(PackStream);
         PackStream.Position := 0;
         SendBMPSize := PackStream.Size;
 
         Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+      //  Socket.SendText('<|E|>');
       end;
 
       if (Pos('<|GETPARTSCREENSHOT|>', s) > 0) then
@@ -1265,9 +1296,30 @@ begin
         PackStream.LoadFromStream(MyCompareBmp);
 
         CompressStream(PackStream);
+        CompressStream(PackStream);
         PackStream.Position := 0;
         SendBMPSize := PackStream.Size;
         Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+       // Socket.SendText('<|E|>');
+
+        // Get Cursor
+       // with frm_Main do begin
+       Synchronize(
+       procedure
+       begin
+          if(GetCursor = Screen.Cursors[crDefault]) then
+            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|crDefault|>');
+
+          if(GetCursor = Screen.Cursors[crHandPoint]) then
+            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|crHandPoint|>');
+
+          if(GetCursor = Screen.Cursors[crIBeam]) then
+            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|crIBeam|>');
+          end);
+
+     //  end;
+
+
       end;
 
       if not (ReceivingBmp) then
@@ -1301,6 +1353,7 @@ begin
           MyTempStream.Position := 0;
           UnPackStream.Clear;
           UnPackStream.LoadFromStream(MyTempStream);
+          DeCompressStream(UnPackStream);
           DeCompressStream(UnPackStream);
 
           if (MyFirstBmp.Size = 0) then
@@ -1359,7 +1412,7 @@ var
   ReceivingFile: Boolean;
   FileSize: Int64;
   s, s2: string;
-  FileStream: TMemoryStream;
+  FileStream: TFileStream;
 begin
   inherited;
   ReceivingFile := false;
@@ -1390,7 +1443,7 @@ begin
           s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
 
           FileSize := StrToInt(s2);
-          FileStream := TMemoryStream.Create;
+          FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile+'.tmp', fmCreate or fmOpenReadWrite);
 
           if (frm_Main.Viewer) then
             Synchronize(
@@ -1421,8 +1474,12 @@ begin
 
         if (FileStream.Size = FileSize) then
         begin
-          FileStream.SaveToFile(frm_ShareFiles.DirectoryToSaveFile);
           FreeAndNil(FileStream);
+
+          if(FileExists(frm_ShareFiles.DirectoryToSaveFile)) then
+            DeleteFile(frm_ShareFiles.DirectoryToSaveFile);
+
+          RenameFile(frm_ShareFiles.DirectoryToSaveFile+'.tmp', frm_ShareFiles.DirectoryToSaveFile);
 
           if not (frm_Main.Viewer) then
             frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADCOMPLETE|>')

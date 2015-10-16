@@ -46,6 +46,9 @@ end;
 procedure Tfrm_Chat.FormCreate(Sender: TObject);
 begin
   FirstMessage := true;
+
+  Left := Screen.WorkAreaWidth - Width;
+  Top := Screen.WorkAreaHeight - Height;
 end;
 
 procedure Tfrm_Chat.YourText_EditKeyPress(Sender: TObject; var Key: Char);
@@ -60,6 +63,7 @@ begin
         LastMessageAreYou := true;
         Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
         Chat_RichEdit.SelAttributes.Style := [fsBold];
+        Chat_RichEdit.SelAttributes.Color := clBlue;
         Chat_RichEdit.SelText := #13 + #13 + 'You say:' + #13;
         Chat_RichEdit.Lines.Add('   •   ' + YourText_Edit.Text);
       end
