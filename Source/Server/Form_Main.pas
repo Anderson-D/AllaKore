@@ -111,7 +111,6 @@ var
 const
   Port = 3898; // Port for Indy Socket;
 
-
 implementation
 
 {$R *.dfm}
@@ -378,9 +377,9 @@ begin
 
   AThread_Main.Connection.Write('<|ID|>' + ID + '<|>' + Password + '<<|');
 
-  try
-    while AThread_Main.Connection.Connected do
-    begin
+  while AThread_Main.Connection.Connected do
+  begin
+    try
       s := AThread_Main.Connection.CurrentReadBuffer;
 
       if (Length(s) < 1) then
@@ -461,7 +460,7 @@ begin
         (L2.SubItems.Objects[3] as TThreadConnection_Files).AThread_Files_Target := (L.SubItems.Objects[3] as TThreadConnection_Files).AThread_Files;
 
       // Get first screenshot
-        (L.SubItems.Objects[1] as TThreadConnection_Desktop).AThread_Desktop_Target.Connection.Write('<|GETFULLSCREENSHOT|><|NEWRESOLUTION|>996<|>528<<|');         //<|NEWRESOLUTION|>996<|>528<<|
+        (L.SubItems.Objects[1] as TThreadConnection_Desktop).AThread_Desktop_Target.Connection.Write('<|GETFULLSCREENSHOT|>');         //<|NEWRESOLUTION|>996<|>528<<|
 
       // Warns Access
         (L.SubItems.Objects[0] as TThreadConnection_Main).AThread_Main_Target.Connection.Write('<|ACCESSING|>');
@@ -478,11 +477,11 @@ begin
 
         AThread_Main_Target.Connection.Write(s2);
       end;
+    except
 
     end;
-  except
-    Destroy;
   end;
+
 end;
 
 procedure TThreadConnection_Main.InsertPing;
@@ -492,7 +491,7 @@ begin
 
   L := frm_Main.Connections_ListView.FindCaption(0, IntToStr(AThread_Main.Handle), false, true, false);
   if (L <> nil) then
-    L.SubItems[4] := intToStr(EndPing)+' ms';
+    L.SubItems[4] := intToStr(EndPing) + ' ms';
 
 end;
 
@@ -524,16 +523,17 @@ begin
   AThread_Main_OnDesktop := (L.SubItems.Objects[0] as TThreadConnection_Main).AThread_Main;
   L.SubItems.Objects[1] := TObject(Self);
 
-  try
-    while AThread_Desktop.Connection.Connected do
-    begin
+  while AThread_Desktop.Connection.Connected do
+  begin
+    try
       s := AThread_Desktop.Connection.CurrentReadBuffer;
 
       AThread_Desktop_Target.Connection.Write(s);
+    except
+
     end;
-  except
-    destroy;
   end;
+
 end;
 
 // The connection type is the Keyboard Remote
@@ -547,16 +547,16 @@ begin
   L := FindListItemID(MyID);
   L.SubItems.Objects[2] := TObject(Self);
 
-  try
-    while AThread_Keyboard.Connection.Connected do
-    begin
+  while AThread_Keyboard.Connection.Connected do
+  begin
+    try
       s := AThread_Keyboard.Connection.CurrentReadBuffer;
 
       AThread_Keyboard_Target.Connection.Write(s);
+    except
     end;
-  except
-    destroy;
   end;
+
 end;
 
 { TThreadConnection_Files }
@@ -571,17 +571,17 @@ begin
   L := FindListItemID(MyID);
   L.SubItems.Objects[3] := TObject(Self);
 
-  try
-    while AThread_Files.Connection.Connected do
-    begin
+  while AThread_Files.Connection.Connected do
+  begin
+    try
+
       s := AThread_Files.Connection.CurrentReadBuffer;
 
       AThread_Files_Target.Connection.Write(s);
-
+    except
     end;
-  except
-    Destroy
   end;
+
 end;
 
 procedure Tfrm_Main.Main_IdTCPServerConnect(AThread: TIdPeerThread);

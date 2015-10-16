@@ -1312,6 +1312,8 @@ begin
               procedure
               begin
                 frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
+                if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                  ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
               end);
 
           end
@@ -1323,14 +1325,13 @@ begin
             MyCompareBmp.CopyFrom(UnPackStream, 0);
             ResumeStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
 
-            try
-              Synchronize(
-                procedure
-                begin
-                  frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
-                end);
-            except
-            end;
+            Synchronize(
+              procedure
+              begin
+                frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
+                if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                  ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+              end);
           end;
 
           ReceiveBmpSize := 0;
@@ -1341,20 +1342,7 @@ begin
           PackStream.Clear;
           ReceivingBmp := false;
 
-          if (frm_RemoteScreen.Resized) then
-          begin
-
-            frm_RemoteScreen.Resized := false;
-            MyFirstBmp.Clear;
-
-            if (frm_RemoteScreen.Resize_CheckBox.Checked) then
-              Socket.SendText('<|GETFULLSCREENSHOT|><|NEWRESOLUTION|>' + intToStr(frm_RemoteScreen.Screen_Image.Width) + '<|>' + intToStr(frm_RemoteScreen.Screen_Image.Height) + '<<|')
-            else
-              Socket.SendText('<|GETFULLSCREENSHOT|>');
-
-          end
-          else
-            Socket.SendText('<|GETPARTSCREENSHOT|>');
+          Socket.SendText('<|GETPARTSCREENSHOT|>');
         end;
 
       end;

@@ -11,19 +11,45 @@ procedure CompareStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryS
 
 procedure ResumeStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream);
 
-function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
+//function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
+procedure ResizeBmp(bmp: TBitmap; Width, Height: Integer);
 
 implementation
 
 
 
 // Resize the Bitmap
-function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
+{function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
 begin
   Bitmap.Canvas.StretchDraw(Rect(0, 0, NewWidth, NewHeight), Bitmap);
   Bitmap.SetSize(NewWidth, NewHeight);
 
   Result := Bitmap;
+end;  }
+
+
+// Resize the Bitmap ( Best quality )
+procedure ResizeBmp(bmp: TBitmap; Width, Height: Integer);
+var
+  SrcBMP: TBitmap;
+  DestBMP: TBitmap;
+begin
+  SrcBMP := TBitmap.Create;
+  try
+    SrcBMP.Assign(bmp);
+    DestBMP := TBitmap.Create;
+    try
+      DestBMP.Width := Width;
+      DestBMP.Height := Height;
+      SetStretchBltMode(DestBMP.Canvas.Handle, HALFTONE);
+      StretchBlt(DestBMP.Canvas.Handle, 0, 0, DestBMP.Width, DestBMP.Height, SrcBMP.Canvas.Handle, 0, 0, SrcBMP.Width, SrcBMP.Height, SRCCOPY);
+      bmp.Assign(DestBMP);
+    finally
+      DestBMP.Free;
+    end;
+  finally
+    SrcBMP.Free;
+  end;
 end;
 
 
@@ -78,7 +104,7 @@ begin
     MyCursor.Free;
   end;
   Mybmp.PixelFormat := pf8bit;
-  Mybmp := ResizeBMP(Mybmp, Width, Height);
+  //ResizeBMP(Mybmp, Width, Height);
   Mybmp.SaveToStream(StreamName);
   Mybmp.Free;
 end;

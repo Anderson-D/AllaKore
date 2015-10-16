@@ -28,8 +28,6 @@ type
     Chat_Image: TImage;
     FileShared_Image: TImage;
     ScreenStart_Image: TImage;
-    procedure FormCreate(Sender: TObject);
-    procedure FormResize(Sender: TObject);
     procedure Resize_CheckBoxClick(Sender: TObject);
     procedure Resize_CheckBoxKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure KeyboardRemote_CheckBoxKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -46,12 +44,10 @@ type
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure Screen_ImageDblClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure Quality_ComboBoxChange(Sender: TObject);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     { Private declarations }
   public
-    Resized, QualityChanged: Boolean;
     CtrlPressed, ShiftPressed, AltPressed: Boolean;
     { Public declarations }
   end;
@@ -357,11 +353,6 @@ begin
   frm_Chat.Show;
 end;
 
-procedure Tfrm_RemoteScreen.Quality_ComboBoxChange(Sender: TObject);
-begin
-  QualityChanged := true;
-end;
-
 procedure Tfrm_RemoteScreen.FileShared_ImageClick(Sender: TObject);
 begin
   frm_ShareFiles.show;
@@ -372,19 +363,6 @@ begin
   frm_Main.SetOffline;
   frm_Main.CloseSockets;
   frm_Main.Reconnect;
-end;
-
-procedure Tfrm_RemoteScreen.FormCreate(Sender: TObject);
-begin
-  Resized := false;
-
-end;
-
-procedure Tfrm_RemoteScreen.FormResize(Sender: TObject);
-begin
-  if (Resize_CheckBox.Checked) then
-    Resized := true;
-
 end;
 
 procedure Tfrm_RemoteScreen.FormShow(Sender: TObject);
@@ -449,7 +427,6 @@ begin
     ResizeIcon_Image.Picture.Assign(ResizeIcon_unchecked_Image.Picture);
   end;
 
-  Resized := true;
 end;
 
 procedure Tfrm_RemoteScreen.Resize_CheckBoxKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
