@@ -46,6 +46,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <VCL_Custom_Styles>Carbon|VCLSTYLE|$(PUBLIC)\Documents\Embarcadero\Studio\14.0\Styles\Carbon.vsf</VCL_Custom_Styles>
         <SanitizedProjectName>AllaKore_Remote_Client</SanitizedProjectName>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
@@ -86,6 +87,7 @@
         <DCC_DebugInformation>0</DCC_DebugInformation>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
+        <VerInfo_AutoGenVersion>true</VerInfo_AutoGenVersion>
         <VerInfo_Build>216</VerInfo_Build>
         <VerInfo_Release>1</VerInfo_Release>
         <VerInfo_Keys>CompanyName=AllaKore;FileDescription=AllaKore - Remote;FileVersion=1.0.1.216;InternalName=AllaKore - Remote;LegalCopyright=AllaKore;LegalTrademarks=AllaKore;OriginalFilename=AllaKore - Remote;ProductName=AllaKore - Remote;ProductVersion=1.0.0.0;Comments=Remote Access Open Source</VerInfo_Keys>

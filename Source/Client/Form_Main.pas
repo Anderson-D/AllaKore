@@ -96,7 +96,6 @@ type
     procedure Timeout_TimerTimer(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure About_BitBtnClick(Sender: TObject);
-    procedure Timer1Timer(Sender: TObject);
   private
     { Private declarations }
   public
@@ -228,7 +227,12 @@ begin
 
     Chat_RichEdit.Clear;
     YourText_Edit.Clear;
-    Chat_RichEdit.Text := 'AllaKore Remote - Chat' + #13 + #13;
+    Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+    Chat_RichEdit.SelAttributes.Style := [fsBold];
+    Chat_RichEdit.SelAttributes.Color := clWhite;
+    Chat_RichEdit.SelText := 'AllaKore Remote - Chat' + #13 + #13;
+
+    FirstMessage := true;
 
     if (Visible) then
       Close;
@@ -641,10 +645,6 @@ begin
   Inc(Timeout);
 end;
 
-procedure Tfrm_Main.Timer1Timer(Sender: TObject);
-begin
-
-end;
 
 // Connection are Main
 procedure TThread_Connection_Main.Execute;
@@ -662,169 +662,170 @@ begin
   while Socket.Connected do
   begin
 
-    if (Socket.ReceiveLength > 0) then
-    begin
-      s := Socket.ReceiveText;
+    try
+      if (Socket.ReceiveLength > 0) then
+      begin
+        s := Socket.ReceiveText;
 
   // Received data, then resets the timeout
-      Timeout := 0;
+        Timeout := 0;
 
   // If receive ID, are Online
-      if (Pos('<|ID|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|ID|>', s2) + 5);
+        if (Pos('<|ID|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|ID|>', s2) + 5);
 
-        frm_Main.MyID := Copy(s2, 1, Pos('<|>', s2) - 1);
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          frm_Main.MyID := Copy(s2, 1, Pos('<|>', s2) - 1);
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        frm_Main.MyPassword := Copy(s2, 1, Pos('<<|', s2) - 1);
+          frm_Main.MyPassword := Copy(s2, 1, Pos('<<|', s2) - 1);
 
-        Synchronize(frm_Main.SetOnline);
+          Synchronize(frm_Main.SetOnline);
 
     // If this Socket are connected, then connect the Desktop Socket, Keyboard Socket, File Download Socket and File Upload Socket
-        Synchronize(
-          procedure
-          begin
-            with frm_Main do
+          Synchronize(
+            procedure
             begin
-              Desktop_Socket.Active := true;
-              Keyboard_Socket.Active := true;
-              Files_Socket.Active := true;
+              with frm_Main do
+              begin
+                Desktop_Socket.Active := true;
+                Keyboard_Socket.Active := true;
+                Files_Socket.Active := true;
 
-              TargetID_Edit.SetFocus;
-            end;
-          end);
-      end;
+                TargetID_Edit.SetFocus;
+              end;
+            end);
+        end;
 
 
   // Ping
-      if (Pos('<|PING|>', s) > 0) then
-      begin
-        Socket.SendText('<|PONG|>');
-      end;
+        if (Pos('<|PING|>', s) > 0) then
+        begin
+          Socket.SendText('<|PONG|>');
+        end;
 
   // Warns access and remove Wallpaper
-      if (Pos('<|ACCESSING|>', s) > 0) then
-      begin
-        OldWallpaper := GetWallpaperDirectory;
-        ChangeWallpaper('');
+        if (Pos('<|ACCESSING|>', s) > 0) then
+        begin
+          OldWallpaper := GetWallpaperDirectory;
+          ChangeWallpaper('');
 
-        Synchronize(
-          procedure
-          begin
-            with frm_Main do
+          Synchronize(
+            procedure
             begin
-              TargetID_Edit.Enabled := false;
-              Connect_BitBtn.Enabled := false;
-              Status_Image.Picture.Assign(frm_Main.Image3.Picture);
-              Status_Label.Caption := 'Connected support!';
-            end;
-          end);
-        Accessed := true;
-      end;
+              with frm_Main do
+              begin
+                TargetID_Edit.Enabled := false;
+                Connect_BitBtn.Enabled := false;
+                Status_Image.Picture.Assign(frm_Main.Image3.Picture);
+                Status_Label.Caption := 'Connected support!';
+              end;
+            end);
+          Accessed := true;
+        end;
 
-      if (Pos('<|IDEXISTS!REQUESTPASSWORD|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
-            with frm_Main do
+        if (Pos('<|IDEXISTS!REQUESTPASSWORD|>', s) > 0) then
+        begin
+          Synchronize(
+            procedure
             begin
-              frm_Main.Status_Label.Caption := 'Waiting for authentication...';
-              frm_Password.ShowModal;
-            end;
-          end);
-      end;
+              with frm_Main do
+              begin
+                frm_Main.Status_Label.Caption := 'Waiting for authentication...';
+                frm_Password.ShowModal;
+              end;
+            end);
+        end;
 
-      if (Pos('<|IDNOTEXISTS|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
-            with frm_Main do
+        if (Pos('<|IDNOTEXISTS|>', s) > 0) then
+        begin
+          Synchronize(
+            procedure
             begin
-              Status_Image.Picture.Assign(frm_Main.Image2.Picture);
-              Status_Label.Caption := 'ID does nor exists.';
-              TargetID_Edit.Enabled := true;
-              Connect_BitBtn.Enabled := true;
-              TargetID_Edit.SetFocus;
-            end;
-          end);
-      end;
+              with frm_Main do
+              begin
+                Status_Image.Picture.Assign(frm_Main.Image2.Picture);
+                Status_Label.Caption := 'ID does nor exists.';
+                TargetID_Edit.Enabled := true;
+                Connect_BitBtn.Enabled := true;
+                TargetID_Edit.SetFocus;
+              end;
+            end);
+        end;
 
-      if (Pos('<|ACCESSDENIED|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
-
-            with frm_Main do
+        if (Pos('<|ACCESSDENIED|>', s) > 0) then
+        begin
+          Synchronize(
+            procedure
             begin
-              Status_Image.Picture.Assign(Image2.Picture);
-              Status_Label.Caption := 'Wrong password!';
-              TargetID_Edit.Enabled := true;
-              Connect_BitBtn.Enabled := true;
-              TargetID_Edit.SetFocus;
-            end;
-          end);
-      end;
 
-      if (Pos('<|ACCESSBUSY|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
+              with frm_Main do
+              begin
+                Status_Image.Picture.Assign(Image2.Picture);
+                Status_Label.Caption := 'Wrong password!';
+                TargetID_Edit.Enabled := true;
+                Connect_BitBtn.Enabled := true;
+                TargetID_Edit.SetFocus;
+              end;
+            end);
+        end;
 
-            with frm_Main do
+        if (Pos('<|ACCESSBUSY|>', s) > 0) then
+        begin
+          Synchronize(
+            procedure
             begin
-              Status_Image.Picture.Assign(Image2.Picture);
-              Status_Label.Caption := 'PC is Busy!';
-              TargetID_Edit.Enabled := true;
-              Connect_BitBtn.Enabled := true;
-              TargetID_Edit.SetFocus;
-            end;
-          end);
-      end;
 
-      if (Pos('<|ACCESSGRANTED|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
-            with frm_Main do
+              with frm_Main do
+              begin
+                Status_Image.Picture.Assign(Image2.Picture);
+                Status_Label.Caption := 'PC is Busy!';
+                TargetID_Edit.Enabled := true;
+                Connect_BitBtn.Enabled := true;
+                TargetID_Edit.SetFocus;
+              end;
+            end);
+        end;
+
+        if (Pos('<|ACCESSGRANTED|>', s) > 0) then
+        begin
+          Synchronize(
+            procedure
             begin
-              Status_Image.Picture.Assign(Image3.Picture);
-              Status_Label.Caption := 'Access granted!';
-              Viewer := true;
+              with frm_Main do
+              begin
+                Status_Image.Picture.Assign(Image3.Picture);
+                Status_Label.Caption := 'Access granted!';
+                Viewer := true;
 
-              ClearConnection;
-              frm_RemoteScreen.Show;
-              Socket.SendText('<|RELATION|>' + MyID + '<|>' + TargetID_Edit.Text + '<<|');
-            end;
-          end);
-      end;
+                ClearConnection;
+                frm_RemoteScreen.Show;
+                Socket.SendText('<|RELATION|>' + MyID + '<|>' + TargetID_Edit.Text + '<<|');
+              end;
+            end);
+        end;
 
-      if (Pos('<|DISCONNECTED|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
-            with frm_Main do
+        if (Pos('<|DISCONNECTED|>', s) > 0) then
+        begin
+          Synchronize(
+            procedure
             begin
-              frm_RemoteScreen.Close;
+              with frm_Main do
+              begin
+                frm_RemoteScreen.Close;
 
-              LostConnection := true;
+                LostConnection := true;
 
-              SetOffline;
-              CloseSockets;
-              Reconnect;
+                SetOffline;
+                CloseSockets;
+                Reconnect;
 
              // Application.MessageBox('Lost connection to PC!', 'AllaKore Remote', 16);
 
-                end;
-          end);
-      end;
+                  end;
+            end);
+        end;
 
 
 
@@ -835,365 +836,371 @@ begin
   { Redirected commands }
 
   // Desktop Remote (Mouse and Keyboard)
-      if (Pos('<|RESOLUTION|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|RESOLUTION|>', s2) + 13);
+        if (Pos('<|RESOLUTION|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|RESOLUTION|>', s2) + 13);
 
-        frm_Main.ResolutionTargetWidth := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          frm_Main.ResolutionTargetWidth := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        frm_Main.ResolutionTargetHeight := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-      end;
+          frm_Main.ResolutionTargetHeight := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+        end;
 
-      if (Pos('<|SETMOUSEPOS|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|SETMOUSEPOS|>', s2) + 14);
+        if (Pos('<|SETMOUSEPOS|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|SETMOUSEPOS|>', s2) + 14);
 
-        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
 
-        SetCursorPos(MousePosX, MousePosY);
-      end;
+          SetCursorPos(MousePosX, MousePosY);
+        end;
 
-      if (Pos('<|SETMOUSELEFTCLICKDOWN|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKDOWN|>', s2) + 24);
+        if (Pos('<|SETMOUSELEFTCLICKDOWN|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKDOWN|>', s2) + 24);
 
-        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
 
-        SetCursorPos(MousePosX, MousePosY);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-      end;
+          SetCursorPos(MousePosX, MousePosY);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+        end;
 
-      if (Pos('<|SETMOUSELEFTCLICKUP|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKUP|>', s2) + 22);
+        if (Pos('<|SETMOUSELEFTCLICKUP|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKUP|>', s2) + 22);
 
-        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
 
-        SetCursorPos(MousePosX, MousePosY);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-      end;
+          SetCursorPos(MousePosX, MousePosY);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+        end;
 
-      if (Pos('<|SETMOUSERIGHTCLICKDOWN|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKDOWN|>', s2) + 25);
+        if (Pos('<|SETMOUSERIGHTCLICKDOWN|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKDOWN|>', s2) + 25);
 
-        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
 
-        SetCursorPos(MousePosX, MousePosY);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
-      end;
+          SetCursorPos(MousePosX, MousePosY);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+        end;
 
-      if (Pos('<|SETMOUSERIGHTCLICKUP|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKUP|>', s2) + 23);
+        if (Pos('<|SETMOUSERIGHTCLICKUP|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKUP|>', s2) + 23);
 
-        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
 
-        SetCursorPos(MousePosX, MousePosY);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
-      end;
+          SetCursorPos(MousePosX, MousePosY);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+        end;
 
-      if (Pos('<|SETMOUSMIDDLEDOWN|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|SETMOUSEMIDDLEDOWN|>', s2) + 21);
+        if (Pos('<|SETMOUSMIDDLEDOWN|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|SETMOUSEMIDDLEDOWN|>', s2) + 21);
 
-        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
 
-        SetCursorPos(MousePosX, MousePosY);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
-      end;
+          SetCursorPos(MousePosX, MousePosY);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
+        end;
 
-      if (Pos('<|SETMOUSEMIDDLEUP|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|SETMOUSEMIDDLEUP|>', s2) + 19);
+        if (Pos('<|SETMOUSEMIDDLEUP|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|SETMOUSEMIDDLEUP|>', s2) + 19);
 
-        MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-        Delete(s2, 1, Pos('<|>', s2) + 2);
+          MousePosX := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+          Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          MousePosY := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
 
-        SetCursorPos(MousePosX, MousePosY);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
-      end;
+          SetCursorPos(MousePosX, MousePosY);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
+        end;
 
-      if (Pos('<|SETMOUSEDOUBLECLICK|>', s) > 0) then
-      begin
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-        Sleep(10);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-        Sleep(10);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-        Sleep(10);
-        Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-      end;
+        if (Pos('<|SETMOUSEDOUBLECLICK|>', s) > 0) then
+        begin
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+          Sleep(10);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+          Sleep(10);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+          Sleep(10);
+          Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+        end;
 
 
   // Combo Keys
-      if (Pos('<|ALTDOWN|>', s) > 0) then
-        keybd_event(18, 0, 0, 0);
+        if (Pos('<|ALTDOWN|>', s) > 0) then
+          keybd_event(18, 0, 0, 0);
 
-      if (Pos('<|ALTUP|>', s) > 0) then
-        keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
+        if (Pos('<|ALTUP|>', s) > 0) then
+          keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
 
-      if (Pos('<|CTRLDOWN|>', s) > 0) then
-        keybd_event(17, 0, 0, 0);
+        if (Pos('<|CTRLDOWN|>', s) > 0) then
+          keybd_event(17, 0, 0, 0);
 
-      if (Pos('<|CTRLUP|>', s) > 0) then
-        keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
+        if (Pos('<|CTRLUP|>', s) > 0) then
+          keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
 
-      if (Pos('<|SHIFTDOWN|>', s) > 0) then
-        keybd_event(16, 0, 0, 0);
+        if (Pos('<|SHIFTDOWN|>', s) > 0) then
+          keybd_event(16, 0, 0, 0);
 
-      if (Pos('<|SHIFTUP|>', s) > 0) then
-        keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
+        if (Pos('<|SHIFTUP|>', s) > 0) then
+          keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
 
 
 
 
 
   // Chat
-      if (Pos('<|CHAT|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|CHAT|>', s2) + 7);
+        if (Pos('<|CHAT|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|CHAT|>', s2) + 7);
 
-        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-        Synchronize(
-          procedure
-          begin
-            with frm_Chat do
+          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          Synchronize(
+            procedure
             begin
-              if (FirstMessage) then
+              with frm_Chat do
               begin
-                LastMessageAreYou := false;
-                Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
-                Chat_RichEdit.SelAttributes.Style := [fsBold];
-                Chat_RichEdit.SelAttributes.Color := clGreen;
-                Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
-                FirstMessage := false;
-              end;
-              if (LastMessageAreYou) then
-              begin
-                LastMessageAreYou := false;
-                Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
-                Chat_RichEdit.SelAttributes.Style := [fsBold];
-                Chat_RichEdit.SelAttributes.Color := clGreen;
-                Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
-                Chat_RichEdit.Lines.Add('   •   ' + s2);
-              end
-              else
-              begin
-                Chat_RichEdit.Lines.Add('   •   ' + s2);
-              end;
+                if (FirstMessage) then
+                begin
+                  LastMessageAreYou := false;
+                  Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+                  Chat_RichEdit.SelAttributes.Style := [fsBold];
+                  Chat_RichEdit.SelAttributes.Color := clGreen;
+                  Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
+                  FirstMessage := false;
+                end;
 
-              SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+                if (LastMessageAreYou) then
+                begin
+                  LastMessageAreYou := false;
+                  Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+                  Chat_RichEdit.SelAttributes.Style := [fsBold];
+                  Chat_RichEdit.SelAttributes.Color := clGreen;
+                  Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
 
-              if not (Visible) then
-              begin
-                PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
-                Show;
-              end;
+                  Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+                  Chat_RichEdit.SelAttributes.Color := clWhite;
+                  Chat_RichEdit.SelText := '   •   ' + s2;
+                end
+                else
+                begin
+                  Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+                  Chat_RichEdit.SelAttributes.Color := clWhite;
+                  Chat_RichEdit.SelText := #13+'   •   ' + s2;
+                end;
 
-              if not (Active) then
-              begin
-                PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
-                FlashWindow(frm_Main.Handle, true);
-                FlashWindow(frm_Chat.Handle, true);
+                SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+
+                if not (Visible) then
+                begin
+                  PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
+                  Show;
+                end;
+
+                if not (Active) then
+                begin
+                  PlaySound('BEEP', 0, SND_RESOURCE or SND_ASYNC);
+                  FlashWindow(frm_Main.Handle, true);
+                  FlashWindow(frm_Chat.Handle, true);
+                end;
               end;
-            end;
-          end);
-      end;
+            end);
+        end;
 
 
   // Share Files
   // Request Folder List
-      if (Pos('<|GETFOLDERS|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|GETFOLDERS|>', s2) + 13);
+        if (Pos('<|GETFOLDERS|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|GETFOLDERS|>', s2) + 13);
 
-        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
 
-        Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(s2) + '<<|');
-      end;
+          Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(s2) + '<<|');
+        end;
 
   //Request Files List
-      if (Pos('<|GETFILES|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|GETFILES|>', s2) + 11);
+        if (Pos('<|GETFILES|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|GETFILES|>', s2) + 11);
 
-        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
 
-        Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(s2, '*.*') + '<<|');
-      end;
+          Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(s2, '*.*') + '<<|');
+        end;
 
   // Receive Folder List
-      if (Pos('<|FOLDERLIST|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|FOLDERLIST|>', s2) + 13);
-
-        FoldersAndFiles := TStringList.Create;
-        FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
-        FoldersAndFiles.Sort;
-
-        Synchronize(
-          procedure
-          begin
-            frm_ShareFiles.ShareFiles_ListView.Clear;
-          end);
-        for i := 0 to FoldersAndFiles.Count - 1 do
+        if (Pos('<|FOLDERLIST|>', s) > 0) then
         begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|FOLDERLIST|>', s2) + 13);
+
+          FoldersAndFiles := TStringList.Create;
+          FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
+          FoldersAndFiles.Sort;
+
           Synchronize(
             procedure
             begin
-              L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
-              if (FoldersAndFiles.Strings[i] = '..') then
-              begin
-                L.Caption := 'Return';
-                L.ImageIndex := 0;
-              end
-              else
-              begin
-                L.Caption := FoldersAndFiles.Strings[i];
-                L.ImageIndex := 1;
-              end;
+              frm_ShareFiles.ShareFiles_ListView.Clear;
             end);
-        end;
-        FreeAndNil(FoldersAndFiles);
+          for i := 0 to FoldersAndFiles.Count - 1 do
+          begin
+            Synchronize(
+              procedure
+              begin
+                L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
+                if (FoldersAndFiles.Strings[i] = '..') then
+                begin
+                  L.Caption := 'Return';
+                  L.ImageIndex := 0;
+                end
+                else
+                begin
+                  L.Caption := FoldersAndFiles.Strings[i];
+                  L.ImageIndex := 1;
+                end;
+              end);
+          end;
+          FreeAndNil(FoldersAndFiles);
 
-        Socket.SendText('<|REDIRECT|><|GETFILES|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
-      end;
+          Socket.SendText('<|REDIRECT|><|GETFILES|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
+        end;
 
   // Receive Files List
-      if (Pos('<|FILESLIST|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|FILESLIST|>', s2) + 12);
+        if (Pos('<|FILESLIST|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|FILESLIST|>', s2) + 12);
 
-        FoldersAndFiles := TStringList.Create;
-        FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
-        FoldersAndFiles.Sort;
+          FoldersAndFiles := TStringList.Create;
+          FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
+          FoldersAndFiles.Sort;
 
-        for i := 0 to FoldersAndFiles.Count - 1 do
+          for i := 0 to FoldersAndFiles.Count - 1 do
+          begin
+            Synchronize(
+              procedure
+              begin
+                L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
+                L.Caption := FoldersAndFiles.Strings[i];
+                Extension := LowerCase(ExtractFileExt(L.Caption));
+                if (Extension = '.exe') then
+                  L.ImageIndex := 3
+                else if (Extension = '.txt') then
+                  L.ImageIndex := 4
+                else if (Extension = '.rar') then
+                  L.ImageIndex := 5
+                else if (Extension = '.mp3') then
+                  L.ImageIndex := 6
+                else if (Extension = '.zip') then
+                  L.ImageIndex := 7
+                else if (Extension = '.jpg') then
+                  L.ImageIndex := 8
+                else if (Extension = '.bat') then
+                  L.ImageIndex := 9
+                else
+                  L.ImageIndex := 2;
+              end);
+          end;
+          FreeAndNil(FoldersAndFiles);
+
+          Synchronize(
+            procedure
+            begin
+              frm_ShareFiles.ShareFiles_ListView.Enabled := true;
+              frm_ShareFiles.Directory_Edit.Enabled := true;
+            end);
+
+        end;
+
+        if (Pos('<|UPLOADPROGRESS|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|UPLOADPROGRESS|>', s2) + 17);
+
+          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+          Synchronize(
+            procedure
+            begin
+              frm_ShareFiles.Upload_ProgressBar.Position := StrToInt(s2);
+              frm_ShareFiles.SizeUpload_Label.Caption := 'Size: ' + getSize(frm_ShareFiles.Upload_ProgressBar.Position) + ' / ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Max);
+            end);
+        end;
+
+        if (Pos('<|UPLOADCOMPLETE|>', s) > 0) then
         begin
           Synchronize(
             procedure
             begin
-              L := frm_ShareFiles.ShareFiles_ListView.Items.Add;
-              L.Caption := FoldersAndFiles.Strings[i];
-              Extension := LowerCase(ExtractFileExt(L.Caption));
-              if (Extension = '.exe') then
-                L.ImageIndex := 3
-              else if (Extension = '.txt') then
-                L.ImageIndex := 4
-              else if (Extension = '.rar') then
-                L.ImageIndex := 5
-              else if (Extension = '.mp3') then
-                L.ImageIndex := 6
-              else if (Extension = '.zip') then
-                L.ImageIndex := 7
-              else if (Extension = '.jpg') then
-                L.ImageIndex := 8
-              else if (Extension = '.bat') then
-                L.ImageIndex := 9
-              else
-                L.ImageIndex := 2;
+              with frm_ShareFiles do
+              begin
+                Upload_ProgressBar.Position := 0;
+                Upload_BitBtn.Enabled := True;
+                ShareFiles_ListView.Enabled := false;
+                Directory_Edit.Enabled := false;
+                frm_ShareFiles.SizeUpload_Label.Caption := 'Size: 0 B / 0 B';
+              end;
+            end);
+
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|GETFOLDERS|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
+
+          Synchronize(
+            procedure
+            begin
+              Application.MessageBox('File sent!', 'AllaKore Remote - Share Files', 64);
             end);
         end;
-        FreeAndNil(FoldersAndFiles);
 
-        Synchronize(
-          procedure
-          begin
-            frm_ShareFiles.ShareFiles_ListView.Enabled := true;
-            frm_ShareFiles.Directory_Edit.Enabled := true;
-          end);
+        if (Pos('<|DOWNLOADFILE|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|DOWNLOADFILE|>', s2) + 15);
+
+          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+          FileToUpload := TMemoryStream.Create;
+          FileToUpload.LoadFromFile(s2);
+
+          frm_Main.Files_Socket.Socket.SendText('<|SIZE|>' + intToStr(FileToUpload.Size) + '<<|' + MemoryStreamToString(FileToUpload));
+        end;
 
       end;
-
-      if (Pos('<|UPLOADPROGRESS|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|UPLOADPROGRESS|>', s2) + 17);
-
-        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-        Synchronize(
-          procedure
-          begin
-            frm_ShareFiles.Upload_ProgressBar.Position := StrToInt(s2);
-            frm_ShareFiles.SizeUpload_Label.Caption := 'Size: ' + getSize(frm_ShareFiles.Upload_ProgressBar.Position) + ' / ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Max);
-          end);
-      end;
-
-      if (Pos('<|UPLOADCOMPLETE|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
-            with frm_ShareFiles do
-            begin
-              Upload_ProgressBar.Position := 0;
-              Upload_BitBtn.Enabled := True;
-              ShareFiles_ListView.Enabled := false;
-              Directory_Edit.Enabled := false;
-              frm_ShareFiles.SizeUpload_Label.Caption := 'Size: 0 B / 0 B';
-            end;
-          end);
-
-        frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|GETFOLDERS|>' + frm_ShareFiles.Directory_Edit.Text + '<<|');
-
-        Synchronize(
-          procedure
-          begin
-            Application.MessageBox('File sent!', 'AllaKore Remote - Share Files', 64);
-          end);
-      end;
-
-      if (Pos('<|DOWNLOADFILE|>', s) > 0) then
-      begin
-        s2 := s;
-        Delete(s2, 1, Pos('<|DOWNLOADFILE|>', s2) + 15);
-
-        s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-        FileToUpload := TMemoryStream.Create;
-        FileToUpload.LoadFromFile(s2);
-
-        frm_Main.Files_Socket.Socket.SendText('<|SIZE|>' + intToStr(FileToUpload.Size) + '<<|' + MemoryStreamToString(FileToUpload));
-
-        FreeAndNil(FileToUpload);
-      end;
-
+    except
     end;
     Sleep(5); // Avoids using 100% CPU
   end;
@@ -1224,143 +1231,35 @@ begin
 
   while Socket.Connected do
   begin
-
-    if (Socket.ReceiveLength > 0) then
-    begin
-
-      s := Socket.ReceiveText;
-
-      if (Pos('<|GETFULLSCREENSHOT|>', s) > 0) then
+    try
+      if (Socket.ReceiveLength > 0) then
       begin
 
-        if (Pos('<|NEWRESOLUTION|>', s) > 0) then
+        s := Socket.ReceiveText;
+
+        if (Pos('<|GETFULLSCREENSHOT|>', s) > 0) then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|NEWRESOLUTION|>', s2) + 16);
 
-          ResolutionWidth := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
-
-          ResolutionHeight := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-        end
-        else
-        begin
-          ResolutionWidth := Screen.Width;
-          ResolutionHeight := Screen.Height;
-        end;
-
-        frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|RESOLUTION|>' + IntToStr(Screen.Width) + '<|>' + IntToStr(Screen.Height) + '<<|');
-
-        ReceiveBmpSize := 0;
-        MyFirstBmp.Clear;
-        UnPackStream.Clear;
-        MyTempStream.Clear;
-        MySecondBmp.Clear;
-        MyCompareBmp.Clear;
-        PackStream.Clear;
-        ReceivingBmp := false;
-
-        Synchronize(
-          procedure
+          if (Pos('<|NEWRESOLUTION|>', s) > 0) then
           begin
-            GetScreenToBmp(false, MyFirstBmp, ResolutionWidth, ResolutionHeight);
-          end);
+            s2 := s;
+            Delete(s2, 1, Pos('<|NEWRESOLUTION|>', s2) + 16);
 
-        MyFirstBmp.Position := 0;
-        PackStream.LoadFromStream(MyFirstBmp);
+            ResolutionWidth := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
+            Delete(s2, 1, Pos('<|>', s2) + 2);
 
-        CompressStream(PackStream);
-        CompressStream(PackStream);
-        PackStream.Position := 0;
-        SendBMPSize := PackStream.Size;
-
-        Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
-      end;
-
-      if (Pos('<|GETPARTSCREENSHOT|>', s) > 0) then
-      begin
-        Synchronize(
-          procedure
-          begin
-            CompareStream(MyFirstBmp, MySecondBmp, MyCompareBmp, ResolutionWidth, ResolutionHeight);
-          end);
-
-        MyCompareBmp.Position := 0;
-        PackStream.LoadFromStream(MyCompareBmp);
-
-        CompressStream(PackStream);
-        CompressStream(PackStream);
-        PackStream.Position := 0;
-        SendBMPSize := PackStream.Size;
-        Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
-      end;
-
-      if not (ReceivingBmp) then
-      begin
-        if (Pos('<|SIZE|>', s) > 0) then
-        begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-          ReceiveBmpSize := StrToInt(s2);
-
-          Delete(s, 1, Pos('<<|', s) + 2);
-          ReceivingBmp := true;
-
-          Synchronize(
-            procedure
-            begin
-              frm_RemoteScreen.Caption := 'AllaKore Remote - ' + GetSize(ReceiveBmpSize);
-            end);
-        end;
-      end;
-
-      if (Length(s) > 0) and (ReceivingBmp) then
-      begin
-        MyTempStream.Write(AnsiString(s)[1], Length(s));
-
-        if (MyTempStream.Size >= ReceiveBmpSize) then
-        begin
-
-          MyTempStream.Position := 0;
-          UnPackStream.Clear;
-          UnPackStream.LoadFromStream(MyTempStream);
-          DeCompressStream(UnPackStream);
-          DeCompressStream(UnPackStream);
-
-          if (MyFirstBmp.Size = 0) then
-          begin
-            MyFirstBmp.CopyFrom(UnPackStream, 0);
-            MyFirstBmp.Position := 0;
-
-            Synchronize(
-              procedure
-              begin
-                frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
-                if (frm_RemoteScreen.Resize_CheckBox.Checked) then
-                  ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
-              end);
-
+            ResolutionHeight := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
           end
           else
           begin
-            MyCompareBmp.Clear;
-            MySecondBmp.Clear;
-
-            MyCompareBmp.CopyFrom(UnPackStream, 0);
-            ResumeStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
-
-            Synchronize(
-              procedure
-              begin
-                frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
-                if (frm_RemoteScreen.Resize_CheckBox.Checked) then
-                  ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
-              end);
+            ResolutionWidth := Screen.Width;
+            ResolutionHeight := Screen.Height;
           end;
 
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|RESOLUTION|>' + IntToStr(Screen.Width) + '<|>' + IntToStr(Screen.Height) + '<<|');
+
           ReceiveBmpSize := 0;
+          MyFirstBmp.Clear;
           UnPackStream.Clear;
           MyTempStream.Clear;
           MySecondBmp.Clear;
@@ -1368,11 +1267,122 @@ begin
           PackStream.Clear;
           ReceivingBmp := false;
 
-          Socket.SendText('<|GETPARTSCREENSHOT|>');
+          Synchronize(
+            procedure
+            begin
+              GetScreenToBmp(false, MyFirstBmp, ResolutionWidth, ResolutionHeight);
+            end);
+
+          MyFirstBmp.Position := 0;
+          PackStream.LoadFromStream(MyFirstBmp);
+
+          CompressStream(PackStream);
+          CompressStream(PackStream);
+          PackStream.Position := 0;
+          SendBMPSize := PackStream.Size;
+
+          Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+        end;
+
+        if (Pos('<|GETPARTSCREENSHOT|>', s) > 0) then
+        begin
+          Synchronize(
+            procedure
+            begin
+              CompareStream(MyFirstBmp, MySecondBmp, MyCompareBmp, ResolutionWidth, ResolutionHeight);
+            end);
+
+          MyCompareBmp.Position := 0;
+          PackStream.LoadFromStream(MyCompareBmp);
+
+          CompressStream(PackStream);
+          CompressStream(PackStream);
+          PackStream.Position := 0;
+          SendBMPSize := PackStream.Size;
+          Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+        end;
+
+        if not (ReceivingBmp) then
+        begin
+          if (Pos('<|SIZE|>', s) > 0) then
+          begin
+            s2 := s;
+            Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
+            s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+            ReceiveBmpSize := StrToInt(s2);
+
+            Delete(s, 1, Pos('<<|', s) + 2);
+            ReceivingBmp := true;
+
+            Synchronize(
+              procedure
+              begin
+                frm_RemoteScreen.Caption := 'AllaKore Remote - ' + GetSize(ReceiveBmpSize);
+              end);
+          end;
+        end;
+
+        if (Length(s) > 0) and (ReceivingBmp) then
+        begin
+          MyTempStream.Write(AnsiString(s)[1], Length(s));
+
+          if (MyTempStream.Size >= ReceiveBmpSize) then
+          begin
+
+            Socket.SendText('<|GETPARTSCREENSHOT|>');
+
+            MyTempStream.Position := 0;
+            UnPackStream.Clear;
+            UnPackStream.LoadFromStream(MyTempStream);
+            DeCompressStream(UnPackStream);
+            DeCompressStream(UnPackStream);
+
+            if (MyFirstBmp.Size = 0) then
+            begin
+              MyFirstBmp.CopyFrom(UnPackStream, 0);
+              MyFirstBmp.Position := 0;
+
+              Synchronize(
+                procedure
+                begin
+                  frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
+                  if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                    ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+                end);
+
+            end
+            else
+            begin
+              MyCompareBmp.Clear;
+              MySecondBmp.Clear;
+
+              MyCompareBmp.CopyFrom(UnPackStream, 0);
+              ResumeStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
+
+              Synchronize(
+                procedure
+                begin
+                  frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
+                  if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                    ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+                end);
+            end;
+
+            ReceiveBmpSize := 0;
+            UnPackStream.Clear;
+            MyTempStream.Clear;
+            MySecondBmp.Clear;
+            MyCompareBmp.Clear;
+            PackStream.Clear;
+            ReceivingBmp := false;
+
+          end;
+
         end;
 
       end;
-
+    except
     end;
     Sleep(5); // Avoids using 100% CPU
   end;
@@ -1392,85 +1402,89 @@ begin
 
   while Socket.Connected do
   begin
-    if (Socket.ReceiveLength > 0) then
-    begin
-      s := Socket.ReceiveText;
-
-      if not (ReceivingFile) then
+    try
+      if (Socket.ReceiveLength > 0) then
       begin
+        s := Socket.ReceiveText;
 
-        if (Pos('<|DIRECTORYTOSAVE|>', s) > 0) then
+        if not (ReceivingFile) then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|DIRECTORYTOSAVE|>', s2) + 18);
 
-          s2 := Copy(s2, 1, Pos('<|>', s2) - 1);
+          if (Pos('<|DIRECTORYTOSAVE|>', s) > 0) then
+          begin
+            s2 := s;
+            Delete(s2, 1, Pos('<|DIRECTORYTOSAVE|>', s2) + 18);
 
-          frm_ShareFiles.DirectoryToSaveFile := s2;
+            s2 := Copy(s2, 1, Pos('<|>', s2) - 1);
+
+            frm_ShareFiles.DirectoryToSaveFile := s2;
+          end;
+
+          if (Pos('<|SIZE|>', s) > 0) then
+          begin
+            s2 := s;
+            Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
+            s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+            FileSize := StrToInt(s2);
+            FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
+
+            if (frm_Main.Viewer) then
+              Synchronize(
+                procedure
+                begin
+                  frm_ShareFiles.Download_ProgressBar.Max := FileSize;
+                  frm_ShareFiles.Download_ProgressBar.Position := 0;
+                  frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + getSize(FileStream.Size) + ' / ' + GetSize(FileSize);
+                end);
+
+            Delete(s, 1, Pos('<<|', s) + 2);
+            ReceivingFile := true;
+          end;
         end;
 
-        if (Pos('<|SIZE|>', s) > 0) then
+        if (Length(s) > 0) and (ReceivingFile) then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-          FileSize := StrToInt(s2);
-          FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
-
+          FileStream.Write(AnsiString(s)[1], Length(s));
           if (frm_Main.Viewer) then
             Synchronize(
               procedure
               begin
-                frm_ShareFiles.Download_ProgressBar.Max := FileSize;
-                frm_ShareFiles.Download_ProgressBar.Position := 0;
+                frm_ShareFiles.Download_ProgressBar.Position := FileStream.Size;
                 frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + getSize(FileStream.Size) + ' / ' + GetSize(FileSize);
-              end);
-
-          Delete(s, 1, Pos('<<|', s) + 2);
-          ReceivingFile := true;
-        end;
-      end;
-
-      if (Length(s) > 0) and (ReceivingFile) then
-      begin
-        FileStream.Write(AnsiString(s)[1], Length(s));
-        if (frm_Main.Viewer) then
-          Synchronize(
-            procedure
-            begin
-              frm_ShareFiles.Download_ProgressBar.Position := FileStream.Size;
-              frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + getSize(FileStream.Size) + ' / ' + GetSize(FileSize);
-            end)
-        else
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADPROGRESS|>' + intToStr(FileStream.Size) + '<<|');
-
-        if (FileStream.Size = FileSize) then
-        begin
-          FreeAndNil(FileStream);
-
-          if (FileExists(frm_ShareFiles.DirectoryToSaveFile)) then
-            DeleteFile(frm_ShareFiles.DirectoryToSaveFile);
-
-          RenameFile(frm_ShareFiles.DirectoryToSaveFile + '.tmp', frm_ShareFiles.DirectoryToSaveFile);
-
-          if not (frm_Main.Viewer) then
-            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADCOMPLETE|>')
+              end)
           else
-            Synchronize(
-              procedure
-              begin
-                frm_ShareFiles.Download_ProgressBar.Position := 0;
-                frm_ShareFiles.Download_BitBtn.Enabled := true;
-                frm_ShareFiles.SizeDownload_Label.Caption := 'Size: 0 B / 0 B';
-                Application.MessageBox('Download complete!', 'AllaKore Remote - Share Files', 64);
-              end);
+            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADPROGRESS|>' + intToStr(FileStream.Size) + '<<|');
 
-          ReceivingFile := False;
+          if (FileStream.Size = FileSize) then
+          begin
+            FreeAndNil(FileStream);
+
+            if (FileExists(frm_ShareFiles.DirectoryToSaveFile)) then
+              DeleteFile(frm_ShareFiles.DirectoryToSaveFile);
+
+            RenameFile(frm_ShareFiles.DirectoryToSaveFile + '.tmp', frm_ShareFiles.DirectoryToSaveFile);
+
+            if not (frm_Main.Viewer) then
+              frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADCOMPLETE|>')
+            else
+              Synchronize(
+                procedure
+                begin
+                  frm_ShareFiles.Download_ProgressBar.Position := 0;
+                  frm_ShareFiles.Download_BitBtn.Enabled := true;
+                  frm_ShareFiles.SizeDownload_Label.Caption := 'Size: 0 B / 0 B';
+                  Application.MessageBox('Download complete!', 'AllaKore Remote - Share Files', 64);
+                end);
+
+            ReceivingFile := False;
+          end;
+
         end;
 
       end;
 
+    except
     end;
 
     Sleep(5); // Avoids using 100% CPU

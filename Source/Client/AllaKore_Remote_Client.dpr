@@ -15,6 +15,7 @@ uses
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
+  TStyleManager.TrySetStyle('Carbon');
   Application.CreateForm(Tfrm_Main, frm_Main);
   Application.CreateForm(Tfrm_Password, frm_Password);
   Application.CreateForm(Tfrm_RemoteScreen, frm_RemoteScreen);

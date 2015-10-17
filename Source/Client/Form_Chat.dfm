@@ -36,9 +36,6 @@ object frm_Chat: Tfrm_Chat
     Font.Height = -11
     Font.Name = 'Tahoma'
     Font.Style = []
-    Lines.Strings = (
-      'AllaKore Remote - Chat'
-      '')
     ParentFont = False
     ReadOnly = True
     ScrollBars = ssVertical
