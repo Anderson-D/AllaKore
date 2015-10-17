@@ -12,7 +12,7 @@ object frm_Chat: Tfrm_Chat
   Font.Style = []
   FormStyle = fsStayOnTop
   OldCreateOrder = False
-  Position = poDesigned
+  Position = poDesktopCenter
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
@@ -36,6 +36,9 @@ object frm_Chat: Tfrm_Chat
     Font.Height = -11
     Font.Name = 'Tahoma'
     Font.Style = []
+    Lines.Strings = (
+      'AllaKore Remote - Chat'
+      '')
     ParentFont = False
     ReadOnly = True
     ScrollBars = ssVertical

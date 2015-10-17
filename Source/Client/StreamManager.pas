@@ -117,7 +117,7 @@ var
 begin
   MySecondStream.Clear;
   MyCompareStream.Clear;
-  GetScreenToBmp(false, MySecondStream, Width, Height);
+  GetScreenToBmp(True, MySecondStream, Width, Height);
 
   P1 := MyFirstStream.Memory;
   P2 := MySecondStream.Memory;
