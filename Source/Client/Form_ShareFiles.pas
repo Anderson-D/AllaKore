@@ -38,11 +38,13 @@ type
     { Private declarations }
   public
     DirectoryToSaveFile: string;
+    FileStream: TFileStream;
     { Public declarations }
   end;
 
 var
   frm_ShareFiles: Tfrm_ShareFiles;
+
 
 implementation
 
@@ -123,17 +125,21 @@ end;
 procedure Tfrm_ShareFiles.Upload_BitBtnClick(Sender: TObject);
 var
   FileName: string;
-  FileStream: TMemoryStream;
 begin
   OpenDialog1.FileName := '';
   if (OpenDialog1.Execute()) then
   begin
-    FileStream := TMemoryStream.Create;
-    FileStream.LoadFromFile(OpenDialog1.FileName);
+    //FileStream := TMemoryStream.Create;
+    //FileStream.LoadFromFile(OpenDialog1.FileName);
+
+    FileStream := TFileStream.Create(OpenDialog1.FileName, fmOpenRead);
     FileName := ExtractFileName(OpenDialog1.FileName);
     Upload_ProgressBar.Max := FileStream.Size;
-    frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<<|' + MemoryStreamToString(FileStream));
-    FreeAndNil(FileStream);
+//    frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<<|' + MemoryStreamToString(FileStream));
+    frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<<|');
+    FileStream.Position := 0;
+    frm_Main.Files_Socket.Socket.SendStream(FileStream);
+
     Upload_BitBtn.Enabled := false;
   end;
 end;
