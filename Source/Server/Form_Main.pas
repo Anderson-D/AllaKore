@@ -20,7 +20,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ComCtrls, StdCtrls, ExtCtrls, AppEvnts, IdBaseComponent, IdComponent,
-  IdTCPServer, IdMappedPortTCP, XPMan,  Menus, IniFiles;
+  IdTCPServer, IdMappedPortTCP, XPMan;
 
 
 // Thread to Define type connection, if Main, Desktop Remote, Download or Upload Files.
@@ -94,34 +94,24 @@ type
     ApplicationEvents1: TApplicationEvents;
     Main_IdTCPServer: TIdTCPServer;
     Ping_Timer: TTimer;
-    pm1: TPopupMenu;
-    Configurao1: TMenuItem;
     procedure ApplicationEvents1Exception(Sender: TObject; E: Exception);
     procedure FormCreate(Sender: TObject);
     procedure Main_IdTCPServerExecute(AThread: TIdPeerThread);
     procedure Main_IdTCPServerConnect(AThread: TIdPeerThread);
     procedure Ping_TimerTimer(Sender: TObject);
-    procedure Configurao1Click(Sender: TObject);
   private
     { Private declarations }
   public
     { Public declarations }
-    procedure SaveIni(Param, Value, ArqFile, Name: String; encrypted: Boolean); //Marcones Freitas - 16/10/2015 -> Save the File .ini
-    function GetIni(Path, Key, KeyValue : string; encrypted: Boolean): string;  //Marcones Freitas - 16/10/2015 -> Get the File .ini
-    function EnDecryptString(StrValue : String; Key: Word) : String;            //Marcones Freitas - 16/10/2015 -> Encrypt or Decrypt   
   end;
 
 var
   frm_Main: Tfrm_Main;
-  Port : Integer;
-  Group, Machine: string;
 
-//const
-//  Port = 3898; // Port for Indy Socket;
+const
+  Port = 3898; // Port for Indy Socket;
 
 implementation
-
-uses uConfig;
 
 {$R *.dfm}
 
@@ -271,16 +261,8 @@ end;
 
 procedure Tfrm_Main.FormCreate(Sender: TObject);
 begin
-  if GetIni(ExtractFilePath(Application.ExeName) + Application.Title+'.ini', cGeneral, cPort, True) = '0' then
-     begin
-       FConfig := TFConfig.Create(self);
-       FConfig.ShowModal;
-       FreeAndNil(FConfig);
-     end;
-  Port := StrToInt(GetIni(ExtractFilePath(Application.ExeName) + Application.Title+'.ini', cGeneral, cPort, True));
-
   Main_IdTCPServer.DefaultPort := Port;
-  Main_IdTCPServer.Active      := true;
+  Main_IdTCPServer.Active := true;
 end;
 
 procedure Tfrm_Main.Main_IdTCPServerExecute(AThread: TIdPeerThread);
@@ -310,22 +292,6 @@ begin
       // Create the Thread for Main Socket
         ThreadMain := TThreadConnection_Main.Create(AThread_Define);
         ThreadMain.Resume;
-
-        if (Pos('<|GROUP|>', s) > 0) then
-        begin
-         // Get the Group
-         s2 := s;
-         Delete(s2, 1, Pos('<|MAINSOCKET|>', s) + 22);
-         Group := s2;
-         Group := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-         // Get the PC Name
-         s2 := s;
-         Delete(s2, 1, Pos('<|MACHINE|>', s)+ 10);
-         Machine := s2;
-         Machine := Copy(s2, 1, Pos('<<|', s2) - 1);
-        end;
-
 
         Destroy; // Destroy this Thread
       end;
@@ -393,8 +359,6 @@ begin
   L.SubItems.Add(Password);
   L.SubItems.Add('');
   L.SubItems.Add('Calculating...');
-  L.SubItems.Add(Group);   //Marcones Freitas - 16/10/2015 -> Add the Group .ini
-  L.SubItems.Add(Machine); //Marcones Freitas - 16/10/2015 -> Add the Machine .ini
   L.SubItems.Objects[4] := TObject(0);
 end;
 
@@ -423,6 +387,7 @@ begin
         L := FindListItemID(ID);
         L.Delete;
         AThread_Main_Target.Connection.Write('<|DISCONNECTED|>');
+        Break;
       end;
 
       if (Pos('<|FINDID|>', s) > 0) then
@@ -516,6 +481,8 @@ begin
     except
 
     end;
+    
+    Sleep(5);
   end;
 
 end;
@@ -564,10 +531,11 @@ begin
     try
       s := AThread_Desktop.Connection.CurrentReadBuffer;
 
+
       AThread_Desktop_Target.Connection.Write(s);
     except
-
     end;
+    Sleep(5);
   end;
 
 end;
@@ -588,9 +556,12 @@ begin
     try
       s := AThread_Keyboard.Connection.CurrentReadBuffer;
 
+
       AThread_Keyboard_Target.Connection.Write(s);
     except
     end;
+
+    Sleep(5);
   end;
 
 end;
@@ -610,12 +581,13 @@ begin
   while AThread_Files.Connection.Connected do
   begin
     try
-
       s := AThread_Files.Connection.CurrentReadBuffer;
 
       AThread_Files_Target.Connection.Write(s);
     except
     end;
+
+    Sleep(5);
   end;
 
 end;
@@ -646,54 +618,6 @@ begin
     Inc(i);
   end;
 
-end;
-
-procedure Tfrm_Main.Configurao1Click(Sender: TObject);
-begin
- FConfig := TFConfig.Create(self);
- FConfig.ShowModal;
- FreeAndNil(FConfig);
-end;
-
-function Tfrm_Main.GetIni(Path, Key, KeyValue: string;
-  encrypted: Boolean): string;
-var ArqIni : TIniFile;
-    ValueINI : string;
-begin
-  ArqIni := TIniFile.Create(Path);
-
-  ValueINI := ArqIni.ReadString(Key, KeyValue, ValueINI);
-  if ValueINI = '' then
-     ValueINI := '0'
-  else
-  IF encrypted THEN
-     ValueINI := EnDecryptString(ValueINI,250);
-
-  Result := ValueINI;
-  ArqIni.Free;
-end;
-
-procedure Tfrm_Main.SaveIni(Param, Value, ArqFile, Name: String;
-  encrypted: Boolean);
-var ArqIni : TIniFile;
-    I: Integer;
-begin
-  ArqIni := TIniFile.Create(ArqFile);
-  IF encrypted THEN
-     Value := EnDecryptString(Value,250);
-
-  ArqIni.WriteString(Name, Param, Value);
-  ArqIni.Free;
-end;
-
-function Tfrm_Main.EnDecryptString(StrValue: String; Key: Word): String;
-var I: Integer; OutValue : String;
-begin
-  OutValue := '';
-  for I := 1 to Length(StrValue) do
-      OutValue := OutValue + char(Not(ord(StrValue[I])-Key));
-
-  Result := OutValue;
 end;
 
 end.

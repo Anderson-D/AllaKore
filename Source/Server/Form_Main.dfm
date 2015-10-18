@@ -1,7 +1,7 @@
 object frm_Main: Tfrm_Main
   Left = 192
   Top = 125
-  Width = 827
+  Width = 758
   Height = 589
   Caption = 'AllaKore Remote - Server'
   Color = clBtnFace
@@ -17,16 +17,16 @@ object frm_Main: Tfrm_Main
   TextHeight = 13
   object Splitter1: TSplitter
     Left = 0
-    Top = 389
-    Width = 819
+    Top = 384
+    Width = 742
     Height = 3
     Cursor = crVSplit
     Align = alBottom
   end
   object Logs_Memo: TMemo
     Left = 0
-    Top = 392
-    Width = 819
+    Top = 387
+    Width = 742
     Height = 163
     Align = alBottom
     Lines.Strings = (
@@ -39,8 +39,8 @@ object frm_Main: Tfrm_Main
   object Connections_ListView: TListView
     Left = 0
     Top = 0
-    Width = 819
-    Height = 389
+    Width = 742
+    Height = 384
     Align = alClient
     Columns = <
       item
@@ -57,7 +57,7 @@ object frm_Main: Tfrm_Main
       end
       item
         Caption = 'Password'
-        Width = 60
+        Width = 100
       end
       item
         Caption = 'Target ID'
@@ -66,14 +66,6 @@ object frm_Main: Tfrm_Main
       item
         Caption = 'Ping'
         Width = 80
-      end
-      item
-        Caption = 'Group'
-        Width = 100
-      end
-      item
-        Caption = 'Machine'
-        Width = 100
       end>
     GridLines = True
     ReadOnly = True
@@ -105,13 +97,5 @@ object frm_Main: Tfrm_Main
     OnTimer = Ping_TimerTimer
     Left = 360
     Top = 128
-  end
-  object pm1: TPopupMenu
-    Left = 192
-    Top = 96
-    object Configurao1: TMenuItem
-      Caption = 'Config'
-      OnClick = Configurao1Click
-    end
   end
 end
