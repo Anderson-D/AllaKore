@@ -101,7 +101,6 @@ object frm_ShareFiles: Tfrm_ShareFiles
       Top = 56
       Width = 137
       Height = 25
-      Cursor = crHandPoint
       Caption = 'Download file selected'
       TabOrder = 1
       OnClick = Download_BitBtnClick
@@ -111,7 +110,6 @@ object frm_ShareFiles: Tfrm_ShareFiles
       Top = 98
       Width = 137
       Height = 25
-      Cursor = crHandPoint
       Caption = 'Send file to this directory'
       TabOrder = 3
       OnClick = Upload_BitBtnClick
@@ -150,7 +148,7 @@ object frm_ShareFiles: Tfrm_ShareFiles
     Left = 440
     Top = 120
     Bitmap = {
-      494C01010A008000640030003000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01010A008000600030003000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000C000000090000000010020000000000000B0
       0100000000000000000000000000000000000000000000000000000000000000
       0000000000000000000E000000190202022B0101012701010126010101260101
