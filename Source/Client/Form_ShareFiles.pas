@@ -31,6 +31,7 @@ type
     procedure ShareFiles_ListViewKeyPress(Sender: TObject; var Key: Char);
     procedure Download_BitBtnClick(Sender: TObject);
     procedure Upload_BitBtnClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     procedure GoToDirectory(Directory: string);
@@ -151,6 +152,12 @@ begin
     GoToDirectory(Directory_Edit.Text);
     Key := #0;
   end;
+end;
+
+procedure Tfrm_ShareFiles.FormCreate(Sender: TObject);
+begin
+  // Separate Window
+  SetWindowLong(Handle, GWL_EXSTYLE, WS_EX_APPWINDOW);
 end;
 
 procedure Tfrm_ShareFiles.FormShow(Sender: TObject);

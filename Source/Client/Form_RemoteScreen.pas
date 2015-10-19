@@ -44,6 +44,7 @@ type
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure Screen_ImageDblClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     { Private declarations }
@@ -363,6 +364,12 @@ begin
   frm_Main.SetOffline;
   frm_Main.CloseSockets;
   frm_Main.Reconnect;
+end;
+
+procedure Tfrm_RemoteScreen.FormCreate(Sender: TObject);
+begin
+  // Separate Window
+  SetWindowLong(Handle, GWL_EXSTYLE, WS_EX_APPWINDOW);
 end;
 
 procedure Tfrm_RemoteScreen.FormShow(Sender: TObject);

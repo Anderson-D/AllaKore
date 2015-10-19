@@ -45,6 +45,9 @@ end;
 
 procedure Tfrm_Chat.FormCreate(Sender: TObject);
 begin
+  // Separate Window
+  SetWindowLong(Handle, GWL_EXSTYLE, WS_EX_APPWINDOW);
+
   FirstMessage := true;
 
   Left := Screen.WorkAreaWidth - Width;

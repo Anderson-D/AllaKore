@@ -24,7 +24,7 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Imaging.pngimage, Vcl.ExtCtrls,
   Vcl.StdCtrls, Vcl.Buttons, System.Win.ScktComp, StreamManager, ZLIBEX,
   sndkey32, IdBaseComponent, Vcl.AppEvnts, Vcl.ComCtrls, Winapi.MMSystem,
-  Registry, Vcl.Menus;
+  Registry, Vcl.Menus, Vcl.Mask;
 
 type
   TThread_Connection_Main = class(TThread)
@@ -62,7 +62,6 @@ type
     YourPassword_Edit: TEdit;
     background_label_Image3: TImage;
     TargetID_Label: TLabel;
-    TargetID_Edit: TEdit;
     Connect_BitBtn: TBitBtn;
     Status_Image: TImage;
     Status_Label: TLabel;
@@ -78,6 +77,7 @@ type
     Files_Socket: TClientSocket;
     Timeout_Timer: TTimer;
     About_BitBtn: TBitBtn;
+    TargetID_MaskEdit: TMaskEdit;
     procedure Connect_BitBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Reconnect_TimerTimer(Sender: TObject);
@@ -96,6 +96,7 @@ type
     procedure Timeout_TimerTimer(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure About_BitBtnClick(Sender: TObject);
+    procedure TargetID_MaskEditKeyPress(Sender: TObject; var Key: Char);
   private
     { Private declarations }
   public
@@ -183,6 +184,10 @@ procedure Tfrm_Main.ClearConnection;
 begin
   frm_Main.ResolutionTargetWidth := 986;
   frm_Main.ResolutionTargetHeight := 600;
+
+  if not(Visible) then
+    Show;
+
   with frm_RemoteScreen do
   begin
     MouseIcon_Image.Picture.Assign(MouseIcon_unchecked_Image.Picture);
@@ -233,6 +238,7 @@ begin
     Chat_RichEdit.SelText := 'AllaKore Remote - Chat' + #13 + #13;
 
     FirstMessage := true;
+    LastMessageAreYou := false;
 
     if (Visible) then
       Close;
@@ -351,8 +357,8 @@ begin
   YourPassword_Edit.Text := 'Offline';
   YourPassword_Edit.Enabled := false;
 
-  TargetID_Edit.Text := 'Offline';
-  TargetID_Edit.Enabled := False;
+  TargetID_MaskEdit.Clear;
+  TargetID_MaskEdit.Enabled := False;
 
   Connect_BitBtn.Enabled := false;
 
@@ -370,8 +376,8 @@ begin
     YourPassword_Edit.Text := 'Receiving...';
     YourPassword_Edit.Enabled := false;
 
-    TargetID_Edit.Clear;
-    TargetID_Edit.Enabled := False;
+    TargetID_MaskEdit.Clear;
+    TargetID_MaskEdit.Enabled := False;
 
     Connect_BitBtn.Enabled := false;
   end;
@@ -386,8 +392,8 @@ begin
   YourPassword_Edit.Text := MyPassword;
   YourPassword_Edit.Enabled := true;
 
-  TargetID_Edit.Clear;
-  TargetID_Edit.Enabled := true;
+  TargetID_MaskEdit.Clear;
+  TargetID_MaskEdit.Enabled := true;
 
   Connect_BitBtn.Enabled := true;
 
@@ -463,14 +469,14 @@ end;
 
 procedure Tfrm_Main.Connect_BitBtnClick(Sender: TObject);
 begin
-  if (Length(TargetID_Edit.Text) > 0) then
+  if not (TargetID_MaskEdit.Text = '   -   -   ') then
   begin
-    if (TargetID_Edit.Text = MyID) then
+    if (TargetID_MaskEdit.Text = MyID) then
       Application.MessageBox('You can not connect with yourself!', 'AllaKore Remote', 16)
     else
     begin
-      Main_Socket.Socket.SendText('<|FINDID|>' + TargetID_Edit.Text + '<<|');
-      TargetID_Edit.Enabled := False;
+      Main_Socket.Socket.SendText('<|FINDID|>' + TargetID_MaskEdit.Text + '<<|');
+      TargetID_MaskEdit.Enabled := False;
       Connect_BitBtn.Enabled := false;
       Status_Image.Picture.Assign(Image1.Picture);
       Status_Label.Caption := 'Finding the ID...';
@@ -614,6 +620,15 @@ begin
   CloseSockets;
 end;
 
+procedure Tfrm_Main.TargetID_MaskEditKeyPress(Sender: TObject; var Key: Char);
+begin
+  if Key = #13 then
+  begin
+    Connect_BitBtn.Click;
+    Key := #0;
+  end
+end;
+
 procedure Tfrm_Main.Reconnect_TimerTimer(Sender: TObject);
 begin
   // Reconnect Sockets
@@ -693,7 +708,7 @@ begin
                 Keyboard_Socket.Active := true;
                 Files_Socket.Active := true;
 
-                TargetID_Edit.SetFocus;
+                TargetID_MaskEdit.SetFocus;
               end;
             end);
         end;
@@ -716,7 +731,7 @@ begin
             begin
               with frm_Main do
               begin
-                TargetID_Edit.Enabled := false;
+                TargetID_MaskEdit.Enabled := false;
                 Connect_BitBtn.Enabled := false;
                 Status_Image.Picture.Assign(frm_Main.Image3.Picture);
                 Status_Label.Caption := 'Connected support!';
@@ -747,9 +762,9 @@ begin
               begin
                 Status_Image.Picture.Assign(frm_Main.Image2.Picture);
                 Status_Label.Caption := 'ID does nor exists.';
-                TargetID_Edit.Enabled := true;
+                TargetID_MaskEdit.Enabled := true;
                 Connect_BitBtn.Enabled := true;
-                TargetID_Edit.SetFocus;
+                TargetID_MaskEdit.SetFocus;
               end;
             end);
         end;
@@ -764,9 +779,9 @@ begin
               begin
                 Status_Image.Picture.Assign(Image2.Picture);
                 Status_Label.Caption := 'Wrong password!';
-                TargetID_Edit.Enabled := true;
+                TargetID_MaskEdit.Enabled := true;
                 Connect_BitBtn.Enabled := true;
-                TargetID_Edit.SetFocus;
+                TargetID_MaskEdit.SetFocus;
               end;
             end);
         end;
@@ -781,9 +796,9 @@ begin
               begin
                 Status_Image.Picture.Assign(Image2.Picture);
                 Status_Label.Caption := 'PC is Busy!';
-                TargetID_Edit.Enabled := true;
+                TargetID_MaskEdit.Enabled := true;
                 Connect_BitBtn.Enabled := true;
-                TargetID_Edit.SetFocus;
+                TargetID_MaskEdit.SetFocus;
               end;
             end);
         end;
@@ -801,7 +816,8 @@ begin
 
                 ClearConnection;
                 frm_RemoteScreen.Show;
-                Socket.SendText('<|RELATION|>' + MyID + '<|>' + TargetID_Edit.Text + '<<|');
+                Hide;
+                Socket.SendText('<|RELATION|>' + MyID + '<|>' + TargetID_MaskEdit.Text + '<<|');
               end;
             end);
         end;
@@ -821,9 +837,7 @@ begin
                 CloseSockets;
                 Reconnect;
 
-             // Application.MessageBox('Lost connection to PC!', 'AllaKore Remote', 16);
-
-                  end;
+              end;
             end);
         end;
 
@@ -997,7 +1011,7 @@ begin
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Style := [fsBold];
                   Chat_RichEdit.SelAttributes.Color := clGreen;
-                  Chat_RichEdit.SelText := #13 + #13 + 'He say:' + #13;
+                  Chat_RichEdit.SelText := #13 + #13 + 'He say:';
                   FirstMessage := false;
                 end;
 
@@ -1017,7 +1031,7 @@ begin
                 begin
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Color := clWhite;
-                  Chat_RichEdit.SelText := #13+'   •   ' + s2;
+                  Chat_RichEdit.SelText := #13 + '   •   ' + s2;
                 end;
 
                 SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
@@ -1349,6 +1363,7 @@ begin
                   frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
                   if (frm_RemoteScreen.Resize_CheckBox.Checked) then
                     ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+                  frm_RemoteScreen.Caption := 'AllaKore Remote';
                 end);
 
             end

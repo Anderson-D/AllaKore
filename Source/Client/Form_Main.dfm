@@ -12849,15 +12849,6 @@ object frm_Main: Tfrm_Main
       Text = 'Receiving...'
     end
   end
-  object TargetID_Edit: TEdit
-    Left = 143
-    Top = 274
-    Width = 178
-    Height = 21
-    Alignment = taCenter
-    TabOrder = 1
-    OnKeyPress = TargetID_EditKeyPress
-  end
   object Connect_BitBtn: TBitBtn
     Left = 143
     Top = 301
@@ -12865,7 +12856,7 @@ object frm_Main: Tfrm_Main
     Height = 36
     Cursor = crHandPoint
     Caption = 'Connect to PC'
-    TabOrder = 2
+    TabOrder = 1
     OnClick = Connect_BitBtnClick
   end
   object About_BitBtn: TBitBtn
@@ -12875,8 +12866,20 @@ object frm_Main: Tfrm_Main
     Height = 26
     Cursor = crHandPoint
     Caption = 'About'
-    TabOrder = 3
+    TabOrder = 2
     OnClick = About_BitBtnClick
+  end
+  object TargetID_MaskEdit: TMaskEdit
+    Left = 143
+    Top = 274
+    Width = 178
+    Height = 21
+    Alignment = taCenter
+    EditMask = '999-999-999;1;_'
+    MaxLength = 11
+    TabOrder = 3
+    Text = '   -   -   '
+    OnKeyPress = TargetID_MaskEditKeyPress
   end
   object Reconnect_Timer: TTimer
     Interval = 5000
